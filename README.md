@@ -1,6 +1,6 @@
 # Crawdad
 
-**An alternative client for Claude Code that keeps you close to your code.**
+**A client that runs Claude Code and keeps you close to your code.**
 
 > **Status:** early design. There is nothing to install yet.
 
@@ -37,7 +37,7 @@ How exactly to achieve this is still being designed.
 
 Crawdad is a client, not an agent:
 
-- **It wraps Claude Code** and aims to support everything the official client does.
+- **It runs Claude Code** and aims to support everything Claude Code's own interface does.
 - **It edits the standard agent settings** through its UI. Settings it doesn't cover remain
   available through the agent's own configuration files.
 - **It does not include its own AI agent** or its own code editor. Working with code relies on an
@@ -49,11 +49,23 @@ Crawdad is a client, not an agent:
 
 Linux is the primary platform. Windows support is planned. macOS is not tested.
 
+## Requirements
+
+Crawdad runs the Claude Code installed on your machine. It does not include Claude Code.
+
+- Install Claude Code by following
+  [Anthropic's official instructions](https://code.claude.com/docs/en/overview).
+- Sign in to Claude Code with your own Claude account. Crawdad never sees, stores or passes on
+  your credentials.
+
+The minimum supported version of Claude Code will be stated here once there is something to run.
+
 ## How the project is built
 
 - **Specification first.** Requirements are written down before code. The specification lives in
   `specs/` and changes in the same pull request as the code that implements it.
-- **Architecture decisions** are recorded as ADRs in `docs/adr/`.
+- **Architecture decisions** are recorded as ADRs in [`docs/adr/`](docs/adr/). The ground rules
+  for working with Claude Code are in [ADR-0001](docs/adr/0001-legal-ground-rules.md).
 - **Every change goes through a pull request.** No direct commits to `main`.
 - **Tests are part of done.** A requirement is not implemented until a test checks it. Unit test
   coverage is kept at around 80% or higher.
