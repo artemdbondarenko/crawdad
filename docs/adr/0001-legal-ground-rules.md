@@ -1,6 +1,6 @@
 # ADR-0001: Legal ground rules for working with Claude Code
 
-- **Status:** Accepted
+- **Status:** Accepted; rules 2, 4 and 8 superseded by [ADR-0003](0003-api-key-adapters.md)
 - **Date:** 2026-10-26
 
 ## Context
