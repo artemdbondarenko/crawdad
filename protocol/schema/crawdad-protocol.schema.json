@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Crawdad protocol message",
+  "description": "A message exchanged between the Crawdad service and its clients over WebSocket. Every message names its kind in the type field; message kinds are added as the protocol grows.",
+  "type": "object",
+  "required": ["type"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "The kind of the message."
+    }
+  },
+  "$defs": {}
+}

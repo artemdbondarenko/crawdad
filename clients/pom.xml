@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.artemdbondarenko.crawdad</groupId>
+    <artifactId>crawdad-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>crawdad-clients</artifactId>
+  <packaging>pom</packaging>
+  <name>Crawdad clients</name>
+  <description>Builds and tests the TypeScript clients (pnpm workspace) as part of the Maven build.</description>
+
+  <properties>
+    <!-- Downloaded into clients/node/ by the build; nothing has to be installed on the machine. -->
+    <node.version>v24.22.1</node.version>
+    <pnpm.version>12.15.0</pnpm.version>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <configuration>
+          <nodeVersion>${node.version}</nodeVersion>
+          <pnpmVersion>${pnpm.version}</pnpmVersion>
+        </configuration>
+        <executions>
+          <execution>
+            <id>install-node-and-pnpm</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>install-node-and-pnpm</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>pnpm-install</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>install --frozen-lockfile</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-lint</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>lint</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-licenses</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>licenses:check</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-typecheck</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>-r typecheck</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>-r test</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pnpm-build</id>
+            <phase>package</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>-r build</arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

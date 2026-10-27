@@ -1,0 +1,13 @@
+{
+  "name": "@crawdad/tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Build tools for the Crawdad clients, such as the dependency license check.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --coverage",
+    "build": "tsc -p ."
+  }
+}

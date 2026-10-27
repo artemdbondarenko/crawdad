@@ -6,6 +6,14 @@
 # Local Claude Code settings
 .claude/settings.local.json
 
+# Build output
+target/
+node_modules/
+dist/
+coverage/
+# Node.js and pnpm downloaded by the Maven build
+clients/node/
+
 # IDE and editor files
 .idea/
 .vscode/
