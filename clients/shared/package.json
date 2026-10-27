@@ -1,0 +1,16 @@
+{
+  "name": "@crawdad/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code shared by all Crawdad clients.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "vitest run --coverage",
+    "build": "tsc -p ."
+  }
+}

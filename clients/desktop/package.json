@@ -1,0 +1,17 @@
+{
+  "name": "@crawdad/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Crawdad desktop client.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc -p .",
+    "test": "vitest run --coverage",
+    "build": "tsc -p . && vite build"
+  },
+  "dependencies": {
+    "@crawdad/shared": "workspace:*"
+  }
+}
