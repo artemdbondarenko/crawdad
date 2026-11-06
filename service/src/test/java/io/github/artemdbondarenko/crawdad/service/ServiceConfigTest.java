@@ -43,6 +43,21 @@ class ServiceConfigTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"::1", "[::1]", "fe80::1"})
+    void rejectsAnIpv6Host(String host) {
+        assertThatThrownBy(() -> ServiceConfig.fromArgs("--host", host))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("IPv6")
+                .hasMessageContaining(host);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"127.0.0.1", "localhost", "192.168.1.5"})
+    void acceptsAnIpv4AddressOrAHostName(String host) {
+        assertThat(ServiceConfig.fromArgs("--host", host).host()).isEqualTo(host);
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"", " "})
     void rejectsAnEmptyHost(String host) {
         assertThatThrownBy(() -> ServiceConfig.fromArgs("--host", host))

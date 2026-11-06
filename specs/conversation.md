@@ -17,7 +17,9 @@ part. This version talks to a **fake agent**: no Claude Code runs yet (see [Fake
 ## Service
 
 - **Address.** The service listens on `127.0.0.1`, port `8460` by default. Both can be changed:
-  `--host <address>` and `--port <number>`; port `0` picks any free port.
+  `--host <address>` and `--port <number>`; port `0` picks any free port. The host is an IPv4
+  address or a host name; the service refuses to start with an IPv6 address, which is not supported
+  yet.
 - **One port for everything:**
 
   | Request | Answer |

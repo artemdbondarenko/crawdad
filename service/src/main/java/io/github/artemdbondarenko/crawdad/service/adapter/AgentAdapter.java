@@ -5,6 +5,8 @@ import java.util.function.Consumer;
 /**
  * How the service talks to an agent. Holds only what the end-to-end path needs today: starting a
  * session and sending a message; the rest of the adapter interface comes with the real adapter.
+ * A session is not ended when its connection closes: ending one comes with the real adapter, which
+ * has an agent process to stop.
  */
 public interface AgentAdapter {
 
