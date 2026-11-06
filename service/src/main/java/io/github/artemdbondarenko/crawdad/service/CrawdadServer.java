@@ -2,6 +2,7 @@ package io.github.artemdbondarenko.crawdad.service;
 
 import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
+import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.URI;
@@ -106,11 +107,12 @@ public final class CrawdadServer {
         String origin = request.getHeaders().get(HttpHeader.ORIGIN);
         String host = request.getHeaders().get(HttpHeader.HOST);
         if (!new OriginGuard(address().getAuthority()).allows(origin, host)) {
-            LOG.log(Level.WARNING, "WebSocket refused: Origin={0}, Host={1}", origin, host);
+            LOG.log(Level.WARNING, "WebSocket refused: Origin={0}, Host={1}", LogText.safe(origin),
+                    LogText.safe(host));
             Response.writeError(request, response, callback, 403);
             return null;
         }
-        LOG.log(Level.INFO, "WebSocket connected: Origin={0}", origin);
+        LOG.log(Level.INFO, "WebSocket connected: Origin={0}", LogText.safe(origin));
         return new Endpoint(adapter);
     }
 
