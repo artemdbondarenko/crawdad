@@ -1,4 +1,5 @@
 dist/
 coverage/
 node/
+shared/src/generated/
 pnpm-lock.yaml

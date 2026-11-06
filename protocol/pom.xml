@@ -16,6 +16,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
@@ -30,5 +34,21 @@
       <artifactId>json-schema-validator</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- The schema validator logs through SLF4J; without a provider its messages are lost. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
+  <build>
+    <resources>
+      <!-- The schema ships inside the jar, so the service and the conformance tests read the same file. -->
+      <resource>
+        <directory>schema</directory>
+        <targetPath>io/github/artemdbondarenko/crawdad/protocol</targetPath>
+      </resource>
+    </resources>
+  </build>
 </project>
