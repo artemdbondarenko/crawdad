@@ -11,4 +11,7 @@ person using it and of the clients talking to the service.
 - **What does not:** how things are built and why a design was chosen. Those are architecture
   decisions, recorded in [`docs/adr/`](../docs/adr/).
 
-The directory is empty until the first feature is specified.
+## Specifications
+
+- [Conversation with the service](conversation.md) — sending a text and receiving the streamed
+  answer; the messages between the service and its clients; the WebSocket handshake.

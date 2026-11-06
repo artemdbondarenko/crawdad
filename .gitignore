@@ -11,6 +11,8 @@ target/
 node_modules/
 dist/
 coverage/
+# Protocol types generated from the schema by the clients build
+clients/shared/src/generated/
 # Node.js and pnpm downloaded by the Maven build
 clients/node/
 

@@ -49,6 +49,16 @@
             </configuration>
           </execution>
           <execution>
+            <id>pnpm-generate</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>pnpm</goal>
+            </goals>
+            <configuration>
+              <arguments>-r generate</arguments>
+            </configuration>
+          </execution>
+          <execution>
             <id>pnpm-lint</id>
             <phase>process-sources</phase>
             <goals>

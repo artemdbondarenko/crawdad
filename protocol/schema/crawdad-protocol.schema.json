@@ -1,14 +1,99 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Crawdad protocol message",
-  "description": "A message exchanged between the Crawdad service and its clients over WebSocket. Every message names its kind in the type field; message kinds are added as the protocol grows.",
+  "description": "A message exchanged between the Crawdad service and its clients over WebSocket. Every message names its kind in the type field and belongs to the session in session_id; one WebSocket connection is one session.",
   "type": "object",
   "required": ["type"],
-  "properties": {
-    "type": {
+  "oneOf": [
+    { "$ref": "#/$defs/SessionStarted" },
+    { "$ref": "#/$defs/UserMessage" },
+    { "$ref": "#/$defs/AgentMessageStart" },
+    { "$ref": "#/$defs/AgentMessageDelta" },
+    { "$ref": "#/$defs/AgentMessageEnd" },
+    { "$ref": "#/$defs/Error" }
+  ],
+  "$defs": {
+    "SessionId": {
+      "description": "Identifier of the session, issued by the service in session.started.",
       "type": "string",
-      "description": "The kind of the message."
+      "minLength": 1
+    },
+    "MessageId": {
+      "description": "Identifier of one agent answer; all events of the answer carry the same value.",
+      "type": "string",
+      "minLength": 1
+    },
+    "SessionStarted": {
+      "description": "Service to client, right after the connection opens: the session of this connection.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "session.started" },
+        "session_id": { "$ref": "#/$defs/SessionId" }
+      },
+      "required": ["type", "session_id"],
+      "additionalProperties": false,
+      "examples": [{ "type": "session.started", "session_id": "3f2b9c1e" }]
+    },
+    "UserMessage": {
+      "description": "Client to service: text the user sends to the agent.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "user.message" },
+        "session_id": { "$ref": "#/$defs/SessionId" },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "session_id", "text"],
+      "additionalProperties": false,
+      "examples": [{ "type": "user.message", "session_id": "3f2b9c1e", "text": "hello" }]
+    },
+    "AgentMessageStart": {
+      "description": "Service to client: the agent starts an answer.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "agent.message.start" },
+        "session_id": { "$ref": "#/$defs/SessionId" },
+        "message_id": { "$ref": "#/$defs/MessageId" }
+      },
+      "required": ["type", "session_id", "message_id"],
+      "additionalProperties": false,
+      "examples": [{ "type": "agent.message.start", "session_id": "3f2b9c1e", "message_id": "m1" }]
+    },
+    "AgentMessageDelta": {
+      "description": "Service to client: the next part of the answer; the client appends the parts in the order they arrive.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "agent.message.delta" },
+        "session_id": { "$ref": "#/$defs/SessionId" },
+        "message_id": { "$ref": "#/$defs/MessageId" },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "session_id", "message_id", "text"],
+      "additionalProperties": false,
+      "examples": [{ "type": "agent.message.delta", "session_id": "3f2b9c1e", "message_id": "m1", "text": "You said:" }]
+    },
+    "AgentMessageEnd": {
+      "description": "Service to client: the answer is complete; the client accepts input again.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "agent.message.end" },
+        "session_id": { "$ref": "#/$defs/SessionId" },
+        "message_id": { "$ref": "#/$defs/MessageId" }
+      },
+      "required": ["type", "session_id", "message_id"],
+      "additionalProperties": false,
+      "examples": [{ "type": "agent.message.end", "session_id": "3f2b9c1e", "message_id": "m1" }]
+    },
+    "Error": {
+      "description": "Service to client: the last message from the client was rejected; the connection stays open.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "error" },
+        "session_id": { "$ref": "#/$defs/SessionId" },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "session_id", "message"],
+      "additionalProperties": false,
+      "examples": [{ "type": "error", "session_id": "3f2b9c1e", "message": "Unknown message type: user.typing" }]
     }
-  },
-  "$defs": {}
+  }
 }

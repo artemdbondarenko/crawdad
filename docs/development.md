@@ -27,6 +27,24 @@ This one command builds and checks the whole repository:
 
 CI runs the same command on every pull request.
 
+## Run the service
+
+```sh
+./mvnw package -DskipTests
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar
+```
+
+`"$JAVA_HOME/bin/java"` is the Java 25 the build used: with several Java versions installed, a plain
+`java` from `PATH` may be older and fails with `UnsupportedClassVersionError`. If Java 25 is the only
+one and `JAVA_HOME` is not set, plain `java` works.
+
+The service prints the address to open, `http://127.0.0.1:8460/` by default; open exactly that
+address in a browser. Options: `--port <number>` (`0` picks a free port) and `--host <address>`.
+The jar finds its dependencies in `service/target/lib/`, next to it. Stop the service with Ctrl+C.
+
+The service has no authentication yet; see the
+[limitation of this version](../specs/conversation.md#limitation-of-this-version).
+
 ## Repository layout
 
 | Path | What it is |

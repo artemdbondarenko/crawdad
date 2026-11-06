@@ -9,8 +9,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "generate": "node scripts/generate-protocol.ts",
     "typecheck": "tsc -p .",
     "test": "vitest run --coverage",
     "build": "tsc -p ."
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "16.0.0"
   }
 }
