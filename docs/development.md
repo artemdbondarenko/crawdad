@@ -39,7 +39,8 @@ CI runs the same command on every pull request.
 one and `JAVA_HOME` is not set, plain `java` works.
 
 The service prints the address to open, `http://127.0.0.1:8460/` by default; open exactly that
-address in a browser. Options: `--port <number>` (`0` picks a free port) and `--host <address>`.
+address in a browser. Options: `--port <number>` (`0` picks a free port) and `--host <address>` (IPv4 or a host
+name; IPv6 is not supported yet).
 The jar finds its dependencies in `service/target/lib/`, next to it. Stop the service with Ctrl+C.
 
 The service has no authentication yet; see the

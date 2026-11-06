@@ -13,6 +13,11 @@ public record ServiceConfig(String host, int port) {
         if (host == null || host.isBlank()) {
             throw new IllegalArgumentException("The host must not be empty");
         }
+        // Only IPv6 addresses contain a colon; the address and the Origin check would need brackets.
+        if (host.contains(":")) {
+            throw new IllegalArgumentException(
+                    "IPv6 addresses are not supported yet: " + host + "; use an IPv4 address or a host name");
+        }
         if (port < 0 || port > 65535) {
             throw new IllegalArgumentException("The port must be between 0 and 65535: " + port);
         }
