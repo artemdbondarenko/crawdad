@@ -69,7 +69,8 @@ The minimum supported version of Claude Code will be stated here once there is s
 ## How the project is built
 
 - **Specification first.** Requirements are written down before code. The specification lives in
-  `specs/` and changes in the same pull request as the code that implements it.
+  [`specs/`](specs/) and may run ahead of the code; every place where the code does not match it
+  yet is listed in the specification itself.
 - **Architecture decisions** are recorded as ADRs in [`docs/adr/`](docs/adr/). The ground rules
   for working with Claude Code are in [ADR-0001](docs/adr/0001-legal-ground-rules.md).
 - **Every change goes through a pull request.** No direct commits to `main`.
