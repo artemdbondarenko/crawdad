@@ -105,6 +105,7 @@ Covers: `UI-6`.
   | `GET /`, `GET /index.html` | the client page |
   | `GET /assets/<file>` | a file of the client |
   | `GET /ws` with a WebSocket upgrade | the WebSocket of the conversation, see `WS-1`–`WS-4` |
+  | `POST /pair`, `GET /device` | pairing and the device check, see [Pairing](pairing.md) |
   | anything else, including `GET /ws` without an upgrade | `404` |
 
 - **HTTP-2.** A directory, such as `GET /assets/`, MUST be answered with `403` and no listing;
@@ -197,5 +198,4 @@ The exact format of each message is the JSON Schema
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-
-No mismatches: the code on `main` matches this file.
+| `HTTP-1` | `POST /pair` and `GET /device` answer `404` | #10 |

@@ -67,3 +67,5 @@ the same pull request.
   answer; the messages between the service and its clients; the WebSocket handshake.
 - [Addresses and TLS](network.md) — where the service listens; the network address, served only
   over TLS; certificates from files and the service's own root certificate.
+- [Pairing and the device key](pairing.md) — pairing a browser with a one-time code; the device
+  key in a cookie; the device check; the pairing screen of the client.
