@@ -3,8 +3,7 @@
 The owner opens the client in a browser, sends a text and sees the agent's answer arrive part by
 part. This version talks to a **fake agent**: no Claude Code runs yet (see [Fake agent](#fake-agent)).
 
-Areas of this file: `NET` (where the service listens), `HTTP` (what the port serves), `WS` (the
-WebSocket handshake), `MSG` (the messages of the conversation), `UI` (what the client shows),
+Areas of this file: `HTTP` (what a port serves), `WS` (the WebSocket handshake), `MSG` (the messages of the conversation), `UI` (what the client shows),
 `FAKE` (the fake agent).
 
 ## What this protects against
@@ -12,8 +11,8 @@ WebSocket handshake), `MSG` (the messages of the conversation), `UI` (what the c
 The service runs an agent that changes code and runs programs, so a connection to it is a way to run
 code on the owner's machine. The handshake rules (`WS-1`–`WS-4`) stop a web page from another
 origin from talking to the service through the owner's browser, including a page that points its
-own host name at the service's address (DNS rebinding). Listening on localhost by default
-(`NET-1`) keeps the service off the network unless the owner asks for it.
+own host name at the service's address (DNS rebinding). Where the service listens, and how the
+network address is protected, is in [Addresses and TLS](network.md).
 
 ### Limitation of this version
 
@@ -96,19 +95,10 @@ Covers: `UI-6`.
 
 ## Requirements
 
-### Where the service listens
-
-- **NET-1.** The service MUST listen on `127.0.0.1`, port `8460`, unless the owner sets otherwise.
-- **NET-2.** `--host <address>` MUST set the address and `--port <number>` the port; port `0` MUST
-  pick any free port.
-- **NET-3.** The host MUST be an IPv4 address or a host name. With an IPv6 address the service MUST
-  refuse to start and say that IPv6 is not supported yet.
-- **NET-4.** On start the service MUST print the address to open in a browser, such as
-  `http://127.0.0.1:8460/`.
-
 ### What the port serves
 
-- **HTTP-1.** One port MUST serve everything:
+- **HTTP-1.** Each address of the service ([`NET-1`, `NET-2`](network.md)) MUST serve everything on
+  its one port:
 
   | Request | Answer |
   |---|---|
@@ -122,9 +112,9 @@ Covers: `UI-6`.
 
 ### Handshake
 
-- **WS-1.** The `Host` header of the handshake MUST equal `<host>:<port>` of the service, such as
-  `127.0.0.1:8460`.
-- **WS-2.** The `Origin` header of the handshake MUST equal `http://<host>:<port>`, such as
+- **WS-1.** The `Host` header of the handshake MUST equal the `Host` of the site of the address
+  the request arrived on ([`NET-9`](network.md)), such as `127.0.0.1:8460`.
+- **WS-2.** The `Origin` header of the handshake MUST equal the `Origin` of that site, such as
   `http://127.0.0.1:8460`.
 - **WS-3.** Letter case MUST be ignored when comparing these headers, and nothing else: other names
   of the same machine do not match. With the service on `127.0.0.1`, a page opened as

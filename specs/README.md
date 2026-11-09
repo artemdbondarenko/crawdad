@@ -65,3 +65,5 @@ the same pull request.
 
 - [Conversation with the service](conversation.md) — sending a text and receiving the streamed
   answer; the messages between the service and its clients; the WebSocket handshake.
+- [Addresses and TLS](network.md) — where the service listens; the network address, served only
+  over TLS; certificates from files and the service's own root certificate.
