@@ -3,16 +3,20 @@
 The owner opens the client in a browser, sends a text and sees the agent's answer arrive part by
 part. This version talks to a **fake agent**: no Claude Code runs yet (see [Fake agent](#fake-agent)).
 
-Areas of this file: `HTTP` (what a port serves), `WS` (the WebSocket handshake), `MSG` (the messages of the conversation), `UI` (what the client shows),
-`FAKE` (the fake agent).
+Areas of this file: `HTTP` (what a port serves), `WS` (the WebSocket handshake), `MSG` (the
+messages of the conversation and the life of a connection), `UI` (what the client shows), `FAKE`
+(the fake agent).
 
 ## What this protects against
 
 The service runs an agent that changes code and runs programs, so a connection to it is a way to run
 code on the owner's machine. The handshake rules (`WS-1`–`WS-4`) stop a web page from another
 origin from talking to the service through the owner's browser, including a page that points its
-own host name at the service's address (DNS rebinding). Where the service listens, and how the
-network address is protected, is in [Addresses and TLS](network.md).
+own host name at the service's address (DNS rebinding). The device key (`WS-5`) keeps out everyone
+who has not paired — another user of the same computer, another device in the network — and
+revoking a device (`MSG-14`) cuts it off at once. How a device is paired is in
+[Pairing and the device key](pairing.md); where the service listens, and how the network address is
+protected, is in [Addresses and TLS](network.md).
 
 ### Limitation of this version
 
@@ -26,12 +30,14 @@ security change.
 
 ### S-MSG-1. A conversation
 
-Covers: `NET-1`, `NET-4`, `HTTP-1`, `WS-1`, `WS-2`, `MSG-1`–`MSG-6`, `UI-1`–`UI-4`, `FAKE-1`, `FAKE-2`.
+Covers: `NET-1`, `NET-4`, `HTTP-1`, `WS-1`, `WS-2`, `WS-5`, `MSG-1`–`MSG-6`, `UI-1`–`UI-4`,
+`FAKE-1`, `FAKE-2`.
 
 1. The owner starts the service with no options. It prints the address to open:
    `http://127.0.0.1:8460/`.
-2. The owner opens that address. The service serves the client from the same port; the client
-   connects to the service over WebSocket and shows that it is connected.
+2. The owner opens that address in a browser paired there (see `S-PAIR-1` in
+   [Pairing](pairing.md)). The service serves the client from the same port; the client connects to
+   the service over WebSocket with its device key and shows that it is connected.
 3. The owner types `hello world` and sends it. Input is disabled until the answer is complete.
 4. The answer appears under the sent text, growing as its parts arrive, and becomes one message:
    `You said: hello world`.
@@ -59,6 +65,16 @@ Covers: `MSG-7`, `MSG-8`.
    starts.
 3. The connection stays open: the next valid `user.message` gets an answer as in `S-MSG-1`.
 
+### S-MSG-3. A long pause
+
+Covers: `MSG-12`, `MSG-13`.
+
+1. A client is connected as in `S-MSG-1`. The owner sends nothing for ten minutes.
+2. The service pings the client every 30 seconds; the browser answers by itself. The connection
+   stays open, and the next text gets an answer in the same session.
+3. The owner's phone leaves the network without closing the connection. About 90 seconds later the
+   service closes that connection.
+
 ```
 client  → {"type":"user.message","session_id":"3f2b9c1e","text":""}
 service → {"type":"error","session_id":"3f2b9c1e","message":"…"}
@@ -66,22 +82,51 @@ service → {"type":"error","session_id":"3f2b9c1e","message":"…"}
 
 ### S-WS-1. A page from another origin
 
-Covers: `WS-1`–`WS-4`.
+Covers: `WS-1`–`WS-4`, `UI-1`.
 
 1. The service runs on `127.0.0.1:8460`.
 2. The owner opens `http://localhost:8460/` instead of the printed address. The page loads, but its
    WebSocket handshake carries `Origin: http://localhost:8460` and `Host: localhost:8460`.
-3. The service answers `403` without the upgrade, opens no session and writes the refusal to its
-   log. The agent is not reached.
-4. The client shows that the connection is lost.
+3. The device check and the handshake are refused with `403`; the WebSocket gets no upgrade, no
+   session is opened, and the refusal is written to the service log. The agent is not reached.
+4. The client says that the page must be opened at the address the service prints, and does not
+   retry.
 
-### S-UI-1. The service stops
+### S-WS-2. A connection without a key
 
-Covers: `UI-5`, `MSG-11`.
+Covers: `WS-5`, `WS-6`.
 
-1. A client is connected as in `S-MSG-1`.
-2. The owner stops the service.
-3. The client shows that the connection is lost and no longer accepts input.
+1. A process of another OS user on the same computer opens a WebSocket to `127.0.0.1:8460` with the
+   right `Origin` and `Host`, but without a device key — or with a made-up one, or with a key paired
+   on the other address.
+2. The service answers `401` without the upgrade, opens no session and writes the refusal, with the
+   address it came from, to its log. The agent is not reached.
+
+### S-MSG-4. Revoking a device
+
+Covers: `MSG-11`, `MSG-14`, `UI-8`.
+
+1. A laptop is paired as `laptop`; its client is open in two tabs. A phone is connected too.
+2. The owner revokes `laptop` on the service machine.
+3. Both tabs of the laptop are closed at once with the code `4001`. Each shows
+   **This device was unpaired** and the pairing screen, and makes no further attempts to connect.
+4. The phone keeps working.
+5. When the laptop's page is reloaded, `GET /device` answers `401`, and the pairing screen is shown.
+
+### S-UI-1. The service stops and comes back
+
+Covers: `UI-5`, `UI-9`, `UI-10`, `MSG-11`.
+
+1. A client is connected as in `S-MSG-1`; an answer is arriving.
+2. The owner stops the service. The answer stops growing and is marked **Interrupted**.
+3. The client shows that the connection is lost and no longer accepts input. It does not say that
+   the device was unpaired.
+4. The client keeps trying to reach the service, waiting longer between attempts.
+5. The owner starts the service again. The client's next attempt finds its key still valid and
+   connects in a new session; no code is asked.
+6. The earlier messages stay on the page. Below them the client shows
+   **Reconnected — new session. The agent does not remember the messages above.** It accepts input
+   again once the new session has started.
 
 ### S-UI-2. Spaces around the text
 
@@ -104,7 +149,7 @@ Covers: `UI-6`.
   |---|---|
   | `GET /`, `GET /index.html` | the client page |
   | `GET /assets/<file>` | a file of the client |
-  | `GET /ws` with a WebSocket upgrade | the WebSocket of the conversation, see `WS-1`–`WS-4` |
+  | `GET /ws` with a WebSocket upgrade | the WebSocket of the conversation, see `WS-1`–`WS-6` |
   | `POST /pair`, `GET /device` | pairing and the device check, see [Pairing](pairing.md) |
   | anything else, including `GET /ws` without an upgrade | `404` |
 
@@ -122,6 +167,13 @@ Covers: `UI-6`.
   `http://localhost:8460/` is refused; the owner opens the address the service prints.
 - **WS-4.** When a header does not match, the service MUST answer `403` without the upgrade, MUST
   NOT open a session or reach the agent, and MUST write the refusal to its log.
+- **WS-5.** After the headers, the handshake MUST carry a key of an active device paired on this
+  address, in the key cookie ([`KEY-2`, `KEY-4`, `KEY-7`](pairing.md)). Otherwise the service MUST
+  answer `401` without the upgrade, MUST NOT open a session or reach the agent, and MUST write the
+  refusal to its log with the address it came from, but never the key.
+- **WS-6.** A browser cannot see why a handshake was refused, so the client MUST NOT rely on the
+  `401` or `403` of the handshake; it learns whether its key works from `GET /device`
+  ([`KEY-6`](pairing.md)).
 
 ### Messages
 
@@ -148,27 +200,49 @@ Covers: `UI-6`.
   the details. An answer that had already started MAY stop without its `agent.message.end`.
 - **MSG-10.** The `message` of an `error` is for people to read; its wording is not part of the
   contract.
-- **MSG-11.** The connection can end in these ways; the client MUST treat each of them as a lost
-  connection:
+- **MSG-11.** The connection can end in these ways:
 
-  | Close code | When |
-  |---|---|
-  | `1009` | the client sent a frame larger than 64 KiB |
-  | `1011` | an unexpected failure inside the service |
-  | any other code, or none | the service stopped or the connection broke |
+  | Close code | When | The client |
+  |---|---|---|
+  | `4001` `unpaired` | the device was revoked (`MSG-14`) | shows that the device was unpaired (`UI-8`) |
+  | `1009` | the client sent a frame larger than 64 KiB | treats it as a lost connection (`UI-5`) |
+  | `1011` | an unexpected failure inside the service | treats it as a lost connection |
+  | any other code, or none | the service stopped, the connection broke or stopped answering (`MSG-13`) | treats it as a lost connection |
+
+- **MSG-12.** The service MUST send a WebSocket ping on every open connection every 30 seconds. A
+  connection MUST NOT be closed for lack of messages while the client answers the pings.
+- **MSG-13.** The service MUST close a connection that has carried nothing — no message, ping or
+  pong — for 90 seconds.
+- **MSG-14.** When the owner revokes a device, the service MUST close all open connections of that
+  device at once with the code `4001` and the reason `unpaired`, and MUST NOT touch the connections
+  of other devices. A handshake that had passed the key check just before the revocation MUST be
+  closed the same way.
 
 ### Client
 
 - **UI-1.** The client MUST connect to the service that served the page, over WebSocket, and show
-  whether it is connected.
+  whether it is connected. Before it connects, it MUST ask `GET /device`: on `200` it connects; on
+  `401` it shows the pairing screen ([`SCREEN-1`](pairing.md)); on `403` it says that the page must
+  be opened at the address the service prints, and does not retry.
 - **UI-2.** After the owner sends a text, input MUST be disabled until the answer is complete.
 - **UI-3.** The answer MUST appear under the sent text and grow as its parts arrive, as one message.
 - **UI-4.** When the answer is complete, the client MUST accept input again.
-- **UI-5.** When the connection ends, the client MUST show that the connection is lost.
+- **UI-5.** When the connection ends with any code but `4001`, the client MUST show that the
+  connection is lost and stop accepting input. Then it MUST try again as in `UI-1`, starting with
+  `GET /device`; while the service cannot be reached it MUST keep trying, first after 1 second and
+  then twice as long each time, up to 30 seconds between attempts. A new connection is a new
+  session.
 - **UI-6.** The client MUST remove whitespace at both ends of the typed text before sending it. If
   nothing is left, it MUST send nothing and keep the input as it is.
 - **UI-7.** When the service answers with `error`, the client MUST show its `message` in the
   conversation and accept input again.
+- **UI-8.** When the connection is closed with `4001`, the client MUST show
+  **This device was unpaired** and the pairing screen, and MUST NOT try to connect again by itself.
+- **UI-9.** When the connection ends, the messages already shown MUST stay on the page. An answer
+  that had not ended MUST be marked **Interrupted** and MUST NOT grow any more.
+- **UI-10.** When the client connects again in a new session, it MUST show, below the earlier
+  messages, **Reconnected — new session. The agent does not remember the messages above.** It MUST
+  accept input only after `session.started` of the new session.
 
 ### Fake agent
 
@@ -199,3 +273,11 @@ The exact format of each message is the JSON Schema
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
 | `HTTP-1` | `POST /pair` and `GET /device` answer `404` | #10 |
+| `WS-5` | any handshake with the right `Origin` and `Host` is accepted; there are no keys | #10 |
+| `MSG-11`, `MSG-14` | no code `4001`; devices cannot be revoked | #10 |
+| `MSG-12`, `MSG-13` | no pings; a connection with no messages for 30 seconds is closed with `1001` | #17 |
+| `UI-1` | the client connects at once, without `GET /device`, and treats a refused handshake as a lost connection | #10 |
+| `UI-5` | the client shows that the connection is lost and never tries again | #10 |
+| `UI-8` | no pairing, so nothing to show | #10 |
+| `UI-9` | an unfinished answer is not marked | #10 |
+| `UI-10` | the client never connects again | #10 |
