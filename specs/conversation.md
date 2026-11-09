@@ -14,7 +14,10 @@ code on the owner's machine. The handshake rules (`WS-1`–`WS-4`) stop a web pa
 origin from talking to the service through the owner's browser, including a page that points its
 own host name at the service's address (DNS rebinding). The device key (`WS-5`) keeps out everyone
 who has not paired — another user of the same computer, another device in the network — and
-revoking a device (`MSG-14`) cuts it off at once. How a device is paired is in
+revoking a device (`MSG-14`) cuts it off at once. The page itself is protected too: a strict
+content security policy and other headers (`HTTP-3`) keep foreign scripts, frames and leaks of the
+address out, and the agent's output is only ever shown as text (`UI-11`), so an answer that contains
+markup cannot run in the page that holds the owner's connection. How a device is paired is in
 [Pairing and the device key](pairing.md); where the service listens, and how the network address is
 protected, is in [Addresses and TLS](network.md).
 
@@ -138,6 +141,23 @@ Covers: `UI-6`.
 3. The owner types `  hello  ` and sends it. The client sends `hello`, and the answer is
    `You said: hello`.
 
+### S-UI-3. Markup in an answer
+
+Covers: `UI-11`.
+
+1. A client is connected as in `S-MSG-1`.
+2. The owner sends `<img src=x onerror=alert(1)>`.
+3. The answer is shown literally as `You said: <img src=x onerror=alert(1)>`: no image is loaded
+   and no script runs. The same holds for the `message` of an `error`.
+
+### S-HTTP-1. The page in a foreign frame
+
+Covers: `HTTP-3`.
+
+1. A foreign site embeds `http://127.0.0.1:8460/` in a frame.
+2. The browser refuses to show the page in the frame; the foreign site cannot overlay it or make the
+   owner click on it.
+
 ## Requirements
 
 ### What the port serves
@@ -155,6 +175,18 @@ Covers: `UI-6`.
 
 - **HTTP-2.** A directory, such as `GET /assets/`, MUST be answered with `403` and no listing;
   `GET /assets` MUST redirect to `/assets/`.
+- **HTTP-3.** Every HTTP answer of the service — the page, its files, `/pair`, `/device` and errors
+  such as `404` — MUST carry these headers; only the answer to a WebSocket handshake MAY lack them:
+
+  | Header | Value |
+  |---|---|
+  | `Content-Security-Policy` | `default-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'` |
+  | `X-Content-Type-Options` | `nosniff` |
+  | `Referrer-Policy` | `no-referrer` |
+  | `Cross-Origin-Opener-Policy` | `same-origin` |
+
+- **HTTP-4.** The client page MUST work under that policy: it MUST have no inline script, inline
+  style or event handler attribute, and MUST load nothing from another origin.
 
 ### Handshake
 
@@ -243,6 +275,8 @@ Covers: `UI-6`.
 - **UI-10.** When the client connects again in a new session, it MUST show, below the earlier
   messages, **Reconnected — new session. The agent does not remember the messages above.** It MUST
   accept input only after `session.started` of the new session.
+- **UI-11.** The client MUST show the text of answers and the `message` of errors only as text,
+  never as markup.
 
 ### Fake agent
 
@@ -273,6 +307,7 @@ The exact format of each message is the JSON Schema
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
 | `HTTP-1` | `POST /pair` and `GET /device` answer `404` | #10 |
+| `HTTP-3` | no security headers | #10 |
 | `WS-5` | any handshake with the right `Origin` and `Host` is accepted; there are no keys | #10 |
 | `MSG-11`, `MSG-14` | no code `4001`; devices cannot be revoked | #10 |
 | `MSG-12`, `MSG-13` | no pings; a connection with no messages for 30 seconds is closed with `1001` | #17 |

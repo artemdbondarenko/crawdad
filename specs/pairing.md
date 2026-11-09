@@ -25,8 +25,14 @@ WebSocket is in [Conversation with the service](conversation.md).
 - **Leaking the code.** A code in a link travels in the URL fragment, which the browser never sends
   to the server (`SCREEN-2`).
 
-Not protected against: processes of the OS user who runs the service. They act as the owner: they
-can get a code on the service machine and read the key from the browser profile.
+Not protected against:
+
+- **Processes of the OS user who runs the service.** They act as the owner: they can get a code on
+  the service machine and read the key from the browser profile.
+- **Other web servers on the same host.** Browsers send a cookie to every port of its host, so the
+  key cookie also reaches any other server the owner opens on the same host name or address, such as
+  another local web app on `127.0.0.1`. The port in the cookie's name only keeps services on
+  different ports from overwriting each other's keys; it does not hide the key from them.
 
 ## Scenarios
 
