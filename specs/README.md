@@ -69,3 +69,5 @@ the same pull request.
   over TLS; certificates from files and the service's own root certificate.
 - [Pairing and the device key](pairing.md) — pairing a browser with a one-time code; the device
   key in a cookie; the device check; the pairing screen of the client.
+- [Owner's commands](owner-commands.md) — how the owner's commands reach the service and who may use
+  them; one service per OS user; where the service keeps its files.
