@@ -128,6 +128,20 @@ Covers: `TLS-5`, `TLS-6`.
 4. Without a restart, the next connection from the phone gets the renewed certificate, with its new
    expiry date. The open connection keeps working.
 
+### S-TLS-4. A device without the root certificate
+
+Covers: `TLS-7`, `TLS-9`.
+
+1. Tailscale is installed on the machine, and the owner has even issued a certificate with
+   `tailscale cert`. The owner starts the service with `--host laptop.example.ts.net`, but without
+   `--tls-cert` and `--tls-key`.
+2. The service does not look for the Tailscale files by itself. It serves the network address with
+   a certificate issued by its own root certificate.
+3. A phone on which the owner has not installed that root opens
+   `https://laptop.example.ts.net:8460/`. The browser warns that the certificate is not trusted.
+4. The service does nothing about it. The owner either installs the root on the phone (`S-TLS-1`) or
+   restarts the service with the Tailscale files (`S-NET-2`).
+
 ## Requirements
 
 ### Addresses
@@ -205,6 +219,13 @@ Covers: `TLS-5`, `TLS-6`.
 - **TLS-11.** The service MUST NOT serve its root certificate or any private key on any address or
   path. The owner gets the root certificate on the service machine with `crawdad tls export-ca`
   ([Owner's commands](owner-commands.md), `CA-1`).
+- **TLS-12.** The own root certificate MUST have an EC P-256 key and be signed with ECDSA and
+  SHA-256. It MUST carry critical basic constraints `CA:true` with a path length of `0`, so that it
+  signs only server certificates and no other CA, and a critical key usage of only `keyCertSign` and
+  `cRLSign`.
+- **TLS-13.** A server certificate issued by the own root MUST have an EC P-256 key and be signed
+  with ECDSA and SHA-256. It MUST carry critical basic constraints `CA:false`, a critical key usage
+  of only `digitalSignature`, and an extended key usage of only `serverAuth`.
 
 ## Messages
 
@@ -225,4 +246,4 @@ The code on `main` has a single address and no TLS.
 | `NET-8` | no limit on connections; Jetty's default idle timeout | #10 |
 | `NET-9` | one site, `http://<host>:<port>`, where `<host>` is `--host` as given | #10 |
 | `NET-10` | no TLS, so no server name to compare | #10 |
-| `TLS-1`–`TLS-11` | no TLS: `--tls-cert` and `--tls-key` are unknown options | #10 |
+| `TLS-1`–`TLS-13` | no TLS: `--tls-cert` and `--tls-key` are unknown options | #10 |

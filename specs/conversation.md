@@ -97,6 +97,21 @@ Covers: `WS-5`, `WS-6`.
 2. The service answers `401` without the upgrade, opens no session and writes the refusal, with the
    address it came from, to its log. The agent is not reached.
 
+### S-WS-3. A foreign site in the owner's browser
+
+Covers: `WS-1`–`WS-4`.
+
+1. The owner's browser is paired on `http://127.0.0.1:8460/`, and the client is connected.
+2. In another tab the owner opens a foreign site, `https://evil.example/`. Its script opens a
+   WebSocket to `ws://127.0.0.1:8460/ws`. The handshake carries `Origin: https://evil.example`; the
+   service answers `403` without the upgrade and writes the refusal to its log.
+3. The site then points its own name, `evil.example`, at `127.0.0.1` and opens
+   `ws://evil.example:8460/ws` from a page served under that name (DNS rebinding). Now `Origin` and
+   `Host` agree with each other, but `Host: evil.example:8460` is not the site of the address; the
+   handshake is refused with `403` the same way. The same holds for a name pointed at the network
+   address.
+4. The site never reaches the agent. The owner's client keeps working in its own tab.
+
 ### S-MSG-4. Revoking a device
 
 Covers: `MSG-11`, `MSG-14`, `UI-8`.
@@ -248,7 +263,9 @@ Covers: `HTTP-3`.
 - **UI-1.** The client MUST connect to the service that served the page, over WebSocket, and show
   whether it is connected. Before it connects, it MUST ask `GET /device`: on `200` it connects; on
   `401` it shows the pairing screen ([`SCREEN-1`](pairing.md)); on `403` it says that the page must
-  be opened at the address the service prints, and does not retry.
+  be opened at the address the service prints, and does not retry. Any other answer, such as a
+  `5xx`, or no answer at all, MUST be treated as a service that cannot be reached: the client tries
+  again as in `UI-5`.
 - **UI-2.** After the owner sends a text, input MUST be disabled until the answer is complete.
 - **UI-3.** The answer MUST appear under the sent text and grow as its parts arrive, as one message.
 - **UI-4.** When the answer is complete, the client MUST accept input again.
