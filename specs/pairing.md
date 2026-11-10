@@ -16,6 +16,8 @@ WebSocket is in [Conversation with the service](conversation.md).
 
 - **Anyone who can reach the service but is not the owner** — another user of the same computer, or
   another device in the owner's VPN. Without a code from the service machine they cannot get a key.
+  Other users of the computer are not only people: system services, containers run with
+  `--network host` and any software running under another OS user all reach `127.0.0.1` too.
   Guessing is hopeless: one code at a time, six digits, five minutes, and five wrong attempts from all
   sources together burn it (`PAIR-2`–`PAIR-5`).
 - **A foreign web page in the owner's browser.** It cannot spend the owner's attempts or pair itself:
@@ -107,6 +109,24 @@ Covers: `PAIR-7`, `SCREEN-3`.
    `Host` the same way.
 4. The owner's own code then pairs the owner's device.
 
+### S-PAIR-5. A code pairs one device
+
+Covers: `PAIR-3`, `PAIR-8`.
+
+1. The owner gets a code on the service machine and pairs a laptop with it.
+2. The owner enters the same code on a phone. It gets `401 {"error":"invalid_code"}`, as any wrong
+   code does, and the phone stays on the pairing screen.
+3. To pair the phone, the owner gets a new code.
+
+### S-PAIR-6. A new code ends the previous one
+
+Covers: `PAIR-2`, `PAIR-13`, `PAIR-14`.
+
+1. The owner gets code A on the service machine, and then code B. B differs from A.
+2. Entering A gets `401 {"error":"invalid_code"}`; entering B pairs the device.
+3. The owner gets code C and then restarts the service. Entering C gets the same `401`: no code
+   survives a restart. The owner gets a new code from the running service.
+
 ### S-KEY-1. One browser, two addresses
 
 Covers: `KEY-4`, `KEY-5`.
@@ -116,6 +136,16 @@ Covers: `KEY-4`, `KEY-5`.
    `GET /device` there answers `401`: the key of the loopback address does not work on the network
    address. The page shows the pairing screen.
 3. After pairing with a second code, the browser is two devices, one on each address.
+
+### S-KEY-2. Scripts of the page do not see the key
+
+Covers: `KEY-2`.
+
+1. A browser is paired on `http://127.0.0.1:8460/`, and the client is connected.
+2. In the developer console of the client page, the owner lists the cookies scripts can read
+   (`document.cookie`). The key cookie is not among them.
+3. The client keeps working: the browser attaches the key to `GET /device` and to the WebSocket
+   handshake by itself. A script injected into the page could not read the key and carry it away.
 
 ## Requirements
 
@@ -144,6 +174,10 @@ Covers: `KEY-4`, `KEY-5`.
 - **PAIR-9.** When the service cannot save the new device after a correct code, it MUST answer
   `500 {"error":"server_error"}`; the code stays used.
 - **PAIR-10.** Codes and keys MUST NOT be written to the service log.
+- **PAIR-13.** A code MUST be kept only in the memory of the service, never in a file. A restart of
+  the service MUST end the valid code.
+- **PAIR-14.** A new code MUST differ from the code it ends (`PAIR-2`), so that the digits of the
+  previous code never pair.
 
 ### The device key
 
@@ -172,6 +206,8 @@ Covers: `KEY-4`, `KEY-5`.
 - **PAIR-11.** `/pair` MUST accept only `POST` and `/device` only `GET`; any other method MUST be
   answered `405 {"error":"method_not_allowed"}`.
 - **PAIR-12.** Every answer of `/pair` and `/device` MUST carry `Cache-Control: no-store`.
+- **PAIR-15.** `POST /pair` MUST read its body as JSON whatever its `Content-Type`. A foreign page can
+  send that body without a preflight; it is kept out by `Origin` (`PAIR-7`), not by the content type.
 
 ### The pairing screen
 
@@ -179,11 +215,17 @@ Covers: `KEY-4`, `KEY-5`.
   pairing screen — a field for the code and the button **Pair this device** — instead of the
   conversation.
 - **SCREEN-2.** When the page address has the fragment `#pair=<code>`, the client MUST put the code
-  into the field and remove the fragment from the address bar.
+  into the field and remove the fragment from the address bar, keeping the path and query and adding
+  no entry to the browser history. When the fragment holds anything but six digits, the field MUST
+  stay empty.
 - **SCREEN-3.** The client MUST send a code only when the user presses **Pair this device**, never
   by itself.
 - **SCREEN-4.** On `204` the client MUST leave the pairing screen and connect. On `401` it MUST say
   that the code is not valid and keep the screen.
+- **SCREEN-5.** On any other answer of `POST /pair` — `403`, `5xx` or another code — the client MUST
+  say that the service refused the pairing; when no answer comes, that the service could not be
+  reached. In both cases it MUST keep the screen and MUST NOT send the code again by itself. The
+  wording is not part of the contract.
 
 ## Messages
 
@@ -202,6 +244,6 @@ conversation right away.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `PAIR-1`–`PAIR-12` | no codes, no `POST /pair` | #10 |
+| `PAIR-1`–`PAIR-15` | no codes, no `POST /pair` | #10 |
 | `KEY-1`–`KEY-8` | no device keys, no `GET /device` | #10 |
-| `SCREEN-1`–`SCREEN-4` | no pairing screen | #10 |
+| `SCREEN-1`–`SCREEN-5` | no pairing screen | #10 |
