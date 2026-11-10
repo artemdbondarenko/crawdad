@@ -71,4 +71,4 @@ the same pull request.
   key in a cookie; the device check; the pairing screen of the client.
 - [Owner's commands](owner-commands.md) — how the owner's commands reach the service and who may use
   them; one service per OS user; where the service keeps its files; getting a pairing code with
-  `crawdad pair`.
+  `crawdad pair`; listing and revoking devices.
