@@ -7,9 +7,9 @@ browser in a cookie. From then on the browser is a *device* of the owner on that
 Areas of this file: `PAIR` (the code and its exchange for a key), `KEY` (the device key and the
 device check), `SCREEN` (the pairing screen of the client).
 
-The owner gets a code with `crawdad pair` on the service machine, as
-[Owner's commands](owner-commands.md) describes; how the owner lists and revokes devices is not
-specified yet. A scenario here says only that the owner gets a code on the service machine. Using the key on the
+The owner gets a code with `crawdad pair` on the service machine, and lists and revokes devices
+with `crawdad devices` and `crawdad revoke`, as [Owner's commands](owner-commands.md) describes. A
+scenario here says only that the owner gets a code on the service machine. Using the key on the
 WebSocket is in [Conversation with the service](conversation.md).
 
 ## What this protects against

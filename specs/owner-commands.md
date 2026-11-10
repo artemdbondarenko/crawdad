@@ -3,12 +3,14 @@
 The owner manages the service with commands run on the service machine: getting a pairing code,
 listing devices, revoking one, exporting the service's own root certificate. This file says how a
 command reaches the running service, who may use the commands, that one OS user runs one service,
-where the service keeps its files, and how the owner gets a pairing code.
+where the service keeps its files, how the owner gets a pairing code, and how the owner lists and
+revokes devices.
 
 Areas of this file: `CMD` (reaching the service, who may use the commands, one service per OS user),
-`FILE` (the files of the service), `PAIRCMD` (`crawdad pair`).
+`FILE` (the files of the service), `PAIRCMD` (`crawdad pair`), `DEV` (`crawdad devices` and
+`crawdad revoke`).
 
-The commands `devices`, `revoke` and `tls export-ca` are not specified yet. What a code is and how a
+The command `tls export-ca` is not specified yet. What a code is and how a
 browser exchanges it for a device key is in [Pairing and the device key](pairing.md).
 
 ## What this protects against
@@ -37,6 +39,13 @@ Not protected against:
 Accepted limitation: Crawdad assumes one service per machine. Nothing stops another OS user from
 starting a service of their own; it has its own files, socket and devices, and is a separate service
 on another port.
+
+- **A lost or stolen device.** The owner revokes it on the service machine: its key stops working at
+  once, on every address, and its open connections are closed (`DEV-6`). A revocation is kept across
+  restarts (`DEV-10`).
+- **A key in use somewhere unexpected.** `crawdad devices` shows when, from which address and with
+  which browser each device last connected (`DEV-1`, `DEV-2`), so the owner can spot a key used from
+  a place it should not be.
 
 ## Scenarios
 
@@ -192,6 +201,61 @@ Covers: `PAIRCMD-6`, `PAIRCMD-7`.
 3. The owner pairs a laptop with Chrome on Windows without `--name`. It is named
    `Chrome on Windows`.
 
+### S-DEV-1. Listing devices
+
+Covers: `DEV-1`, `DEV-2`, `DEV-4`.
+
+1. The owner has paired the browser on the service machine as `Firefox on Linux` and a phone as
+   `phone`. The phone has never opened the conversation yet.
+2. The owner runs `crawdad devices`. It prints one line per active device, in the order they were
+   paired, and exits with code `0`:
+
+   ```
+   NAME              PAIRED                LAST SEEN             ADDRESS    BROWSER                                                                  LISTENER
+   Firefox on Linux  2026-11-10T09:15:02Z  2026-11-10T09:20:41Z  127.0.0.1  Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0  loopback
+   phone             2026-11-10T09:31:17Z  never                 -          -                                                                        network
+   ```
+
+3. The phone opens the conversation from `100.101.102.104`. The next `crawdad devices` shows that
+   time, address and browser in the phone's line.
+4. Someone tries the WebSocket with a wrong key, and the revoked key of another device. The list does
+   not change.
+5. No device key and no hash of a key appears in the output.
+
+### S-DEV-2. Revoking a device
+
+Covers: `DEV-3`, `DEV-6`, `DEV-9`.
+
+1. The phone is connected. The owner runs `crawdad revoke phone`. The command prints
+   `Revoked phone; its open connections are closed.` and exits with code `0`.
+2. The phone shows that it was unpaired (`S-MSG-4` in [conversation.md](conversation.md)).
+3. `crawdad devices` no longer lists the phone. `crawdad devices --all` does, with the time it was
+   revoked in the column `REVOKED`; active devices have `-` there.
+4. The owner pairs the phone again with `crawdad pair --name phone`. The new device is named `phone`,
+   without a suffix; `crawdad devices --all` shows both, the old one revoked.
+
+### S-DEV-3. A name that cannot be revoked
+
+Covers: `DEV-7`.
+
+The owner has two active devices, `Firefox on Linux` and `tablet`, and the revoked `phone`. Each
+command prints to its error output and exits with code `1`:
+
+| Command | The command says |
+|---|---|
+| `crawdad revoke laptop` | `No active device named laptop. Active devices: Firefox on Linux, tablet` |
+| `crawdad revoke Tablet` | `No active device named Tablet. Active devices: Firefox on Linux, tablet` |
+| `crawdad revoke phone` | `phone was already revoked at 2026-11-10T10:02:55Z.` |
+
+### S-DEV-4. After a restart
+
+Covers: `DEV-10`.
+
+1. The owner has paired a phone and revoked a laptop, then restarts the service.
+2. The phone connects with its key; no code is asked. `crawdad devices --all` shows the same devices
+   with the same times.
+3. The laptop's key is still refused.
+
 ## Requirements
 
 ### Reaching the service
@@ -290,6 +354,43 @@ Covers: `PAIRCMD-6`, `PAIRCMD-7`.
   the addresses of wrong attempts MUST be printed with control characters, direction controls and
   line separators escaped, and cut to at most 200 characters.
 
+### `crawdad devices` and `crawdad revoke`
+
+- **DEV-1.** `crawdad devices` MUST print the active devices, in the order they were paired, and exit
+  with code `0`. For each device it MUST print:
+  - its name;
+  - when it was paired;
+  - when it last connected (`DEV-2`), from which address and with which `User-Agent`, or that it
+    never connected;
+  - the address it was paired on: `loopback` or `network` ([`KEY-4`](pairing.md)).
+
+  With no active devices it MUST say so and exit with code `0`. The output MUST NOT contain a device
+  key or the hash of one. The layout of the output is not part of the contract.
+- **DEV-2.** The last connection of a device is the last WebSocket handshake its key passed
+  ([`WS-5`](conversation.md)). A refused attempt and `GET /device` MUST NOT change it.
+- **DEV-3.** `crawdad devices --all` MUST print the revoked devices as well, each with when it was
+  revoked.
+- **DEV-4.** Times MUST be printed in UTC, in ISO 8601 with the letter `Z`. Their precision is not
+  part of the contract.
+- **DEV-5.** Values that come from a browser — its device name, address and `User-Agent` — MUST be
+  printed as `PAIRCMD-8` says.
+- **DEV-6.** `crawdad revoke <name>` MUST revoke the active device with exactly that name; names are
+  compared with case. From then on its key MUST be refused on every address
+  ([`KEY-6`](pairing.md), [`WS-5`](conversation.md)), and its open connections MUST be closed
+  ([`MSG-14`](conversation.md)). The command MUST say that the device was revoked and exit with code
+  `0`.
+- **DEV-7.** When no active device has the name, `crawdad revoke` MUST revoke nothing and exit with
+  code `1`. If a revoked device has the name, it MUST say that the device was already revoked, and
+  when — the latest time, if several were. Otherwise it MUST say that there is no active device with
+  that name and list the names of the active devices.
+- **DEV-8.** When the service cannot save the revocation, the command MUST say so, point at the
+  service log and exit with code `1`. The device MUST stay active, and its connections open.
+- **DEV-9.** A revoked device MUST stay in the list of `crawdad devices --all`, and its key MUST never
+  work again. Its name is free: a device paired later may get it without a suffix
+  (`PAIRCMD-7`). Pairing the same browser again makes a new device with a new key.
+- **DEV-10.** Devices, their last connections and revocations MUST be kept across restarts of the
+  service.
+
 ## Messages
 
 This file adds no messages. The requests and answers between a command and the service are internal:
@@ -306,3 +407,4 @@ The code on `main` has no commands, no control socket and no files.
 | `CMD-7`, `CMD-8` | a second start fails only if the port is taken; with `--port 0` two services run | #10 |
 | `FILE-1`–`FILE-5` | the service keeps no files | #10 |
 | `PAIRCMD-1`–`PAIRCMD-8` | no `crawdad pair` and no pairing codes | #10 |
+| `DEV-1`–`DEV-10` | no devices: no `crawdad devices`, no `crawdad revoke` | #10 |
