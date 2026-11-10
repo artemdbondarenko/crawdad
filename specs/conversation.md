@@ -21,14 +21,6 @@ markup cannot run in the page that holds the owner's connection. How a device is
 [Pairing and the device key](pairing.md); where the service listens, and how the network address is
 protected, is in [Addresses and TLS](network.md).
 
-### Limitation of this version
-
-[ADR-0002](../docs/adr/0002-service-and-thin-clients.md), decision 5, requires pairing, a device
-key on every connection and TLS (`wss://`). **This version has none of them.** Any process on the
-same computer can connect to the service and talk to the agent. With `--host` set to a network
-address, so can anyone who reaches that address. Pairing, device keys and TLS come with a separate
-security change.
-
 ## Scenarios
 
 ### S-MSG-1. A conversation
@@ -248,7 +240,8 @@ Covers: `HTTP-3`.
 - **MSG-14.** When the owner revokes a device, the service MUST close all open connections of that
   device at once with the code `4001` and the reason `unpaired`, and MUST NOT touch the connections
   of other devices. A handshake that had passed the key check just before the revocation MUST be
-  closed the same way.
+  closed the same way; a handshake whose key is checked after the revocation MUST be refused as in
+  `WS-5`. Once the revocation is done, the device MUST have no open connections.
 
 ### Client
 
