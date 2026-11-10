@@ -14,6 +14,11 @@ What a code is and how a browser exchanges it for a device key is in
 [Pairing and the device key](pairing.md). The service's own root certificate is in
 [Addresses and TLS](network.md).
 
+In the specification, `crawdad` is the program that runs the service. There is no `crawdad` command to
+install yet: the program is the service's jar, run with `java -jar <path to the jar>`, so
+`crawdad pair` stands for `java -jar <path to the jar> pair`. How to build the jar is in
+[Development](../docs/development.md).
+
 ## What this protects against
 
 - **Another user of the same computer.** They cannot reach the service's commands: the control
@@ -66,7 +71,7 @@ Covers: `CMD-2`, `CMD-3`.
    with code `1`:
 
    ```
-   Crawdad is not running; start it with: crawdad
+   Crawdad is not running; start it with: java -jar /home/owner/crawdad/crawdad-service-0.1.0.jar
    ```
 
 3. The command does not start the service.
@@ -304,7 +309,9 @@ Covers: `CA-5`.
   through its control socket (`FILE-2`). A command MUST NOT start the service.
 - **CMD-3.** When nothing accepts connections on the control socket — the file is missing, or nobody
   listens on it — the command MUST say on its error output that Crawdad is not running and how to
-  start it, and MUST exit with code `1`. The exact wording is not part of the contract.
+  start it, and MUST exit with code `1`. The way to start it MUST work as printed: while there is no
+  `crawdad` command, it is `java -jar` with the path of the jar the command was run from. The exact
+  wording is not part of the contract.
 - **CMD-4.** When the service closes the connection without an answer, the command MUST say so,
   point at the service log and exit with code `1`.
 - **CMD-5.** The control socket MUST accept commands only from the OS user who runs the service: the
