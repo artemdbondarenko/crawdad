@@ -99,7 +99,8 @@ Covers: `TLS-7`–`TLS-11`.
      Root certificate SHA-256: 5F:3A:…:C1
    ```
 
-2. The owner exports the root certificate on the service machine and installs it once on a laptop,
+2. The owner exports the root certificate on the service machine (`S-CA-1` in
+   [owner-commands.md](owner-commands.md)) and installs it once on a laptop,
    checking that its fingerprint matches the printed one.
 3. The laptop opens `https://192.168.1.20:8460/` with no browser warning.
 4. Later the owner restarts the service with `--host 192.168.1.30`. The laptop opens the new address
@@ -202,7 +203,8 @@ Covers: `TLS-5`, `TLS-6`.
   one on the owner's devices. The service MUST NOT replace the root by itself, because the owner's
   devices trust that exact root.
 - **TLS-11.** The service MUST NOT serve its root certificate or any private key on any address or
-  path. The owner gets the root certificate with a command on the service machine.
+  path. The owner gets the root certificate on the service machine with `crawdad tls export-ca`
+  ([Owner's commands](owner-commands.md), `CA-1`).
 
 ## Messages
 

@@ -3,15 +3,16 @@
 The owner manages the service with commands run on the service machine: getting a pairing code,
 listing devices, revoking one, exporting the service's own root certificate. This file says how a
 command reaches the running service, who may use the commands, that one OS user runs one service,
-where the service keeps its files, how the owner gets a pairing code, and how the owner lists and
-revokes devices.
+where the service keeps its files, how the owner gets a pairing code, lists and revokes devices,
+and exports the root certificate.
 
 Areas of this file: `CMD` (reaching the service, who may use the commands, one service per OS user),
 `FILE` (the files of the service), `PAIRCMD` (`crawdad pair`), `DEV` (`crawdad devices` and
-`crawdad revoke`).
+`crawdad revoke`), `CA` (`crawdad tls export-ca`).
 
-The command `tls export-ca` is not specified yet. What a code is and how a
-browser exchanges it for a device key is in [Pairing and the device key](pairing.md).
+What a code is and how a browser exchanges it for a device key is in
+[Pairing and the device key](pairing.md). The service's own root certificate is in
+[Addresses and TLS](network.md).
 
 ## What this protects against
 
@@ -46,6 +47,13 @@ on another port.
 - **A key in use somewhere unexpected.** `crawdad devices` shows when, from which address and with
   which browser each device last connected (`DEV-1`, `DEV-2`), so the owner can spot a key used from
   a place it should not be.
+
+- **A root certificate swapped on the way to a device.** The owner gets the root only on the
+  service machine (`CA-1`), and its fingerprint is printed apart from the certificate, in the same
+  form as at the service's start (`CA-2`), so the owner can compare it with the one the device
+  shows.
+- **The root's private key leaving the machine.** The command never prints the key (`CA-3`); only the
+  certificate is meant to be copied to devices.
 
 ## Scenarios
 
@@ -256,6 +264,33 @@ Covers: `DEV-10`.
    with the same times.
 3. The laptop's key is still refused.
 
+### S-CA-1. Exporting the root certificate
+
+Covers: `CA-1`–`CA-4`.
+
+1. The service has created its own root on a start with `--host 192.168.1.20` and printed
+   `Root certificate SHA-256: 5F:3A:…:C1` (`S-TLS-1` in [network.md](network.md)). It may be running
+   or not.
+2. The owner runs `crawdad tls export-ca > crawdad-root.crt`. The file gets the root certificate as
+   PEM; the terminal shows the fingerprint, and the command exits with code `0`:
+
+   ```
+   SHA-256 fingerprint: 5F:3A:…:C1
+   ```
+
+3. The owner copies `crawdad-root.crt` to a laptop, installs it, and checks that the laptop shows the
+   same fingerprint.
+
+### S-CA-2. No root certificate yet
+
+Covers: `CA-5`.
+
+1. The owner has only ever started the service without `--host`, or with certificate files of
+   Tailscale.
+2. `crawdad tls export-ca` prints to its error output that there is no root certificate yet and that
+   a start with `--host` and no certificate files creates it, and exits with code `1`. Nothing is
+   created.
+
 ## Requirements
 
 ### Reaching the service
@@ -391,6 +426,23 @@ Covers: `DEV-10`.
 - **DEV-10.** Devices, their last connections and revocations MUST be kept across restarts of the
   service.
 
+### `crawdad tls export-ca`
+
+- **CA-1.** `crawdad tls export-ca` MUST print the service's own root certificate
+  ([`TLS-7`](network.md)) to its output as one PEM certificate, and nothing else there, so that the
+  output can be redirected to a file. It MUST exit with code `0`.
+- **CA-2.** The command MUST print the SHA-256 fingerprint of the root certificate to its error
+  output, in the same form as the service prints it at start ([`NET-4`](network.md)): the hash of
+  the DER encoding, as pairs of upper-case hex digits separated by colons.
+- **CA-3.** The command MUST NOT print, copy or read the private key of the root.
+- **CA-4.** The command MUST read the root from the data directory (`FILE-3`), and MUST work whether
+  the service is running or not. It MUST print the root as it is, even when it has expired; checking
+  the root is the service's job ([`TLS-10`](network.md)).
+- **CA-5.** When there is no root, the command MUST say so and how to get one — a start with `--host`
+  and no certificate files — and exit with code `1`. It MUST NOT create the root. When the root
+  cannot be read or is not a certificate, the command MUST name the file and the problem and exit
+  with code `1`.
+
 ## Messages
 
 This file adds no messages. The requests and answers between a command and the service are internal:
@@ -408,3 +460,4 @@ The code on `main` has no commands, no control socket and no files.
 | `FILE-1`–`FILE-5` | the service keeps no files | #10 |
 | `PAIRCMD-1`–`PAIRCMD-8` | no `crawdad pair` and no pairing codes | #10 |
 | `DEV-1`–`DEV-10` | no devices: no `crawdad devices`, no `crawdad revoke` | #10 |
+| `CA-1`–`CA-5` | no own root certificate and no `crawdad tls export-ca` | #10 |
