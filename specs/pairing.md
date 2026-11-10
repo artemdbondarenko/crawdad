@@ -7,8 +7,9 @@ browser in a cookie. From then on the browser is a *device* of the owner on that
 Areas of this file: `PAIR` (the code and its exchange for a key), `KEY` (the device key and the
 device check), `SCREEN` (the pairing screen of the client).
 
-How the owner gets a code, lists devices and revokes them is not specified yet. Where a scenario
-needs it, it says only that the owner gets a code on the service machine. Using the key on the
+The owner gets a code with `crawdad pair` on the service machine, as
+[Owner's commands](owner-commands.md) describes; how the owner lists and revokes devices is not
+specified yet. A scenario here says only that the owner gets a code on the service machine. Using the key on the
 WebSocket is in [Conversation with the service](conversation.md).
 
 ## What this protects against
@@ -163,7 +164,8 @@ Covers: `KEY-4`, `KEY-5`.
 - **KEY-7.** When a browser sends several cookies with the key cookie's name, the service MUST
   accept the request if any of them holds a working key.
 - **KEY-8.** Each device MUST have a name, unique among active devices; `GET /device` returns it.
-  How the name is chosen is not part of the contract.
+  How the name is chosen is in [Owner's commands](owner-commands.md) (`PAIRCMD-6`,
+  `PAIRCMD-7`).
 
 ### HTTP of pairing
 
