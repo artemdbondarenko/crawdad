@@ -170,7 +170,8 @@ Covers: `KEY-2`.
   the answer MUST NOT say which of these it was. So MUST a body that is not that JSON object, that is
   larger than 1 KiB, or whose `code` is not a string of exactly six ASCII digits; each counts as a
   wrong attempt. Every wrong attempt MUST be written to the service log with the address it came
-  from.
+  from; repeated attempts from one address are aggregated as
+  [`LOG-5`](service-log.md) says.
 - **PAIR-9.** When the service cannot save the new device after a correct code, it MUST answer
   `500 {"error":"server_error"}`; the code stays used.
 - **PAIR-10.** Codes and keys MUST NOT be written to the service log.

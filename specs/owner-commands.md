@@ -317,8 +317,8 @@ Covers: `CA-5`.
 - **CMD-5.** The control socket MUST accept commands only from the OS user who runs the service: the
   socket MUST be `0600` in a `0700` directory (`FILE-4`), and the service MUST check the user on the
   other end of every connection. A connection of another user MUST be closed without an answer, and
-  the service MUST write a warning with that user to its log; repeated refusals of one user MAY be
-  written as one aggregated warning.
+  the service MUST write a warning with that user to its log; repeated refusals of one user are
+  aggregated as [`LOG-5`](service-log.md) says.
 - **CMD-6.** The control socket MUST accept commands from the moment the service prints its addresses
   ([`NET-4`](network.md)) until it stops. When the service cannot open the control socket, it MUST
   refuse to start and listen on no address.

@@ -205,11 +205,13 @@ Covers: `HTTP-3`.
   of the same machine do not match. With the service on `127.0.0.1`, a page opened as
   `http://localhost:8460/` is refused; the owner opens the address the service prints.
 - **WS-4.** When a header does not match, the service MUST answer `403` without the upgrade, MUST
-  NOT open a session or reach the agent, and MUST write the refusal to its log.
+  NOT open a session or reach the agent, and MUST write the refusal to its log, aggregated as
+  [`LOG-5`](service-log.md) says.
 - **WS-5.** After the headers, the handshake MUST carry a key of an active device paired on this
   address, in the key cookie ([`KEY-2`, `KEY-4`, `KEY-7`](pairing.md)). Otherwise the service MUST
   answer `401` without the upgrade, MUST NOT open a session or reach the agent, and MUST write the
-  refusal to its log with the address it came from, but never the key.
+  refusal to its log with the address it came from, but never the key, aggregated as
+  [`LOG-5`](service-log.md) says.
 - **WS-6.** A browser cannot see why a handshake was refused, so the client MUST NOT rely on the
   `401` or `403` of the handshake; it learns whether its key works from `GET /device`
   ([`KEY-6`](pairing.md)).

@@ -72,3 +72,5 @@ the same pull request.
 - [Owner's commands](owner-commands.md) — how the owner's commands reach the service and who may use
   them; one service per OS user; where the service keeps its files; getting a pairing code with
   `crawdad pair`; listing and revoking devices; exporting the service's own root certificate.
+- [The service log](service-log.md) — which events the service writes, at which level and with what
+  in them; escaping values from outside; no secrets; aggregating repeated warnings.
