@@ -415,6 +415,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("LOG-4")
     void keepsPrivateKeysOutOfToString() throws Exception {
         LocalCa.ServerCertificate issued = ca(MACHINE, NOW).issue("10.1.2.3");
         String serverKey = Base64.getEncoder().encodeToString(issued.privateKey().getEncoded());

@@ -99,6 +99,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void aSingleWarningGetsNoSummary() {
         warnings.warn(STRANGER, "WebSocket refused");
         assertThat(timer.delays).containsExactly(INTERVAL);
@@ -111,6 +112,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void afterTheSummaryTheSourceIsForgottenAndStartsAgain() {
         warnings.warn(STRANGER, "WebSocket refused");
         warnings.warn(STRANGER, "WebSocket refused");
@@ -132,6 +134,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void aTimerThatFiresEarlyWaitsForTheRestOfTheInterval() {
         warnings.warn(STRANGER, "WebSocket refused");
         clock.advance(Duration.ofSeconds(20));
@@ -204,6 +207,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-3")
     void aValueIsNeverReadAsATemplate() {
         assertThat(WarningAggregator.format("A={0}, B={1}", "{1}", "b")).isEqualTo("A={1}, B=b");
         assertThat(WarningAggregator.format("{x} {} {0", "v")).isEqualTo("{x} {} {0");
@@ -213,6 +217,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void concurrentWarningsAreAllCounted() throws Exception {
         int threads = 8;
         int each = 100;
@@ -247,6 +252,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void theDefaultInstanceWritesTheFirstWarningAtOnce() {
         WarningAggregator system = new WarningAggregator(System.getLogger(LOGGER));
 

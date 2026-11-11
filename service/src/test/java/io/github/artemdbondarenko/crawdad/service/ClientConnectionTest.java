@@ -108,6 +108,7 @@ class ClientConnectionTest {
 
     @Test
     @Tag("MSG-9")
+    @Tag("LOG-2")
     void reportsAFailingAgentWithoutItsDetailsAndKeepsWorking() {
         IllegalStateException failure = new IllegalStateException("internal detail");
         adapter.failure = failure;

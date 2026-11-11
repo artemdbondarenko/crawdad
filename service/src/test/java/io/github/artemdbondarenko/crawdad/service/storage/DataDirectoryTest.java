@@ -71,6 +71,7 @@ class DataDirectoryTest {
 
     @Test
     @Tag("FILE-2")
+    @Tag("LOG-2")
     void fallsBackToADirectoryInsideTheDataDirectoryWithoutXdgRuntimeDir() {
         List<LogRecord> logged = new CopyOnWriteArrayList<>();
         Handler collect = new Handler() {

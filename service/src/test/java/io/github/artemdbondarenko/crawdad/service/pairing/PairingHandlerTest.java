@@ -117,6 +117,8 @@ class PairingHandlerTest {
         "own, evil.example"
     })
     @Tag("PAIR-7")
+    @Tag("LOG-2")
+    @Tag("LOG-5")
     void aForeignPageIsRefusedBeforeTheCodeAndSpendsNoAttempts(String origin, String host) throws Exception {
         Issued issued = codes.issue(null);
         String ownAuthority = authority(loopback);
@@ -140,6 +142,7 @@ class PairingHandlerTest {
 
     @Test
     @Tag("LOG-5")
+    @Tag("LOG-2")
     void aRefusedOriginDoesNotHideTheWrongCodesThatFollowFromTheSameAddress() throws Exception {
         Issued issued = codes.issue(null);
         String wrong = issued.code().equals("000000") ? "111111" : "000000";
@@ -162,6 +165,8 @@ class PairingHandlerTest {
     @Test
     @Tag("PAIR-8")
     @Tag("PAIR-10")
+    @Tag("LOG-2")
+    @Tag("LOG-4")
     void aWrongCodeIsRefusedAndWarnedAboutWithItsSourceButNotTheCode() throws Exception {
         Issued issued = codes.issue(null);
         String wrong = issued.code().equals("000000") ? "111111" : "000000";
@@ -335,6 +340,8 @@ class PairingHandlerTest {
 
     @Test
     @Tag("PAIR-10")
+    @Tag("LOG-2")
+    @Tag("LOG-4")
     void logsThePairingWithNameAndAddressButNeitherKeyNorCode() throws Exception {
         Issued issued = codes.issue("phone");
 
@@ -347,6 +354,8 @@ class PairingHandlerTest {
 
     @Test
     @Tag("PAIR-9")
+    @Tag("LOG-1")
+    @Tag("LOG-2")
     void aRegistryThatCannotSaveFailsThePairingAndUsesUpTheCode() throws Exception {
         Issued issued = codes.issue("phone");
         // The registry writes next to devices.json; without its directory every write fails.
@@ -439,6 +448,7 @@ class PairingHandlerTest {
     @Tag("KEY-8")
     @Tag("PAIR-12")
     @Tag("DEV-2")
+    @Tag("LOG-6")
     void theDeviceAnswersWithItsNameAndRenewsTheSameCookie() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         String cookie = "crawdad_device_" + loopback.getLocalPort();
@@ -454,6 +464,8 @@ class PairingHandlerTest {
                 cookie + "=" + key + "; Path=/; Max-Age=34560000; HttpOnly; SameSite=Strict");
         // Only a handshake counts as a connection of the device (DEV-2).
         assertThat(devices.devices(false).getFirst().lastSeen()).isNull();
+        // A client asks at every reconnect: an answer that works is not a warning either (LOG-6).
+        assertThat(messages(java.util.logging.Level.WARNING)).isEmpty();
     }
 
     @Test
@@ -520,6 +532,7 @@ class PairingHandlerTest {
     @Test
     @Tag("KEY-6")
     @Tag("PAIR-12")
+    @Tag("LOG-6")
     void anUnknownMissingOrRevokedKeyIsUnauthorizedQuietlyAndKeepsTheCookie() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         devices.revoke("phone", new ConnectionRegistry());

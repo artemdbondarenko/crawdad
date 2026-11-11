@@ -626,6 +626,8 @@ class CrawdadServerTest {
 
     @Test
     @Tag("WS-4")
+    @Tag("LOG-2")
+    @Tag("LOG-3")
     void warnsAboutARefusedHandshakeWithItsSource() throws Exception {
         List<String> warnings = new CopyOnWriteArrayList<>();
         Handler collect = new Handler() {
@@ -844,6 +846,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("LOG-3")
     void escapesWhatTheClientSentBeforeLoggingTheCloseAndTheError() {
         List<LogRecord> records = new CopyOnWriteArrayList<>();
         Handler collect = new Handler() {

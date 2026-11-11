@@ -122,6 +122,8 @@ class HandshakeAuthTest {
         "network key on loopback", "key under the cookie name of another port"})
     @Tag("DEV-2")
     @Tag("WS-5")
+    @Tag("LOG-2")
+    @Tag("LOG-4")
     void aHandshakeWithoutAKeyThatWorksHereIsUnauthorized(String presented) throws Exception {
         String loopbackCookie = loopbackCookieName();
         String networkCookie = networkCookieName();
@@ -152,6 +154,7 @@ class HandshakeAuthTest {
     @Test
     @Tag("DEV-2")
     @Tag("WS-5")
+    @Tag("LOG-2")
     void aKeyPairedOnLoopbackOpensTheConversationAndRecordsTheLogin() throws Exception {
         try (Socket socket = new Socket("127.0.0.1", server.address().getPort())) {
             String status = handshake(socket, server.address().getAuthority(), "http://",
@@ -193,6 +196,7 @@ class HandshakeAuthTest {
 
     @Test
     @Tag("WS-4")
+    @Tag("LOG-2")
     void aForeignPageIsRefusedBeforeTheKeyIsLookedAt() throws Exception {
         String authority = server.address().getAuthority();
         String cookie = "Cookie: " + loopbackCookieName() + "=" + laptopKey;
@@ -214,6 +218,8 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("LOG-4")
+    @Tag("LOG-7")
     void aLoginThatCannotBeSavedStillOpensTheConversation() throws Exception {
         // The registry writes next to devices.json; without its directory every write fails.
         Files.move(data.data(), temp.resolve("moved"));
