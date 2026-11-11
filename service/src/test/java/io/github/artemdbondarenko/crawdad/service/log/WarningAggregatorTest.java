@@ -18,6 +18,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class WarningAggregatorTest {
@@ -59,9 +60,10 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void tenWarningsFromOneSourceInAnIntervalGiveTwoLines() {
         for (int i = 1; i <= 10; i++) {
-            warnings.warn(STRANGER, "Wrong pairing code, attempt " + i);
+            warnings.warn(STRANGER, "Wrong pairing code, attempt {0}", String.valueOf(i));
         }
 
         // The first warning is written at once, the repeats wait for the end of the interval.
@@ -77,6 +79,7 @@ class WarningAggregatorTest {
     }
 
     @Test
+    @Tag("LOG-5")
     void twoSourcesAreCountedSeparately() {
         for (int i = 0; i < 5; i++) {
             warnings.warn(STRANGER, "WebSocket refused");
@@ -150,17 +153,63 @@ class WarningAggregatorTest {
     }
 
     @Test
-    void theSourceAndTheMessageAreEscaped() {
-        String forged = "1.2.3.4\r\nWARNING: forged";
-        warnings.warn(forged, "Origin evil\u001B[2J");
-        warnings.warn(forged, "Origin evil\u001B[2J");
+    @Tag("LOG-5")
+    void twoKindsFromOneSourceAreCountedSeparately() {
+        for (int i = 0; i < 3; i++) {
+            warnings.warn(STRANGER, "Pairing refused: Origin={0}, Host={1}", "https://evil.example", "x:1");
+            warnings.warn(STRANGER, "Wrong pairing code");
+        }
+        // The first wrong code is not hidden behind the refused Origin before it.
+        assertThat(messages()).containsExactly(
+                "Pairing refused: Origin=https://evil.example, Host=x:1 (from 100.64.0.9)",
+                "Wrong pairing code (from 100.64.0.9)");
 
         clock.advance(INTERVAL);
         timer.fire();
 
         assertThat(messages()).containsExactly(
-                "Origin evil\\x1B[2J (from 1.2.3.4\\x0D\\x0AWARNING: forged)",
-                "Origin evil\\x1B[2J (repeated 1 more times from 1.2.3.4\\x0D\\x0AWARNING: forged in the last 60 s)");
+                "Pairing refused: Origin=https://evil.example, Host=x:1 (from 100.64.0.9)",
+                "Wrong pairing code (from 100.64.0.9)",
+                "Pairing refused: Origin=https://evil.example, Host=x:1 (repeated 2 more times from 100.64.0.9 in the"
+                        + " last 60 s)",
+                "Wrong pairing code (repeated 2 more times from 100.64.0.9 in the last 60 s)");
+    }
+
+    @Test
+    @Tag("LOG-3")
+    void theSourceAndEachValueAreEscaped() {
+        String forged = "1.2.3.4\r\nWARNING: forged";
+        warnings.warn(forged, "Refused: Origin={0}", "evil\u001B[2J\\");
+        warnings.warn(forged, "Refused: Origin={0}", "evil\u001B[2J\\");
+
+        clock.advance(INTERVAL);
+        timer.fire();
+
+        assertThat(messages()).containsExactly(
+                "Refused: Origin=evil\\x1B[2J\\\\ (from 1.2.3.4\\x0D\\x0AWARNING: forged)",
+                "Refused: Origin=evil\\x1B[2J\\\\ (repeated 1 more times from 1.2.3.4\\x0D\\x0AWARNING: forged in the"
+                        + " last 60 s)");
+    }
+
+    @Test
+    @Tag("LOG-2")
+    @Tag("LOG-3")
+    void aLongValueIsCutOnItsOwnAndKeepsTheOthers() {
+        String origin = "https://" + "a".repeat(300);
+
+        warnings.warn(STRANGER, "Refused: Origin={0}, Host={1}", origin, "127.0.0.1:8460");
+
+        assertThat(messages()).containsExactly("Refused: Origin=" + origin.substring(0, LogText.MAX_LENGTH)
+                + "…(+108), Host=127.0.0.1:8460 (from 100.64.0.9)");
+    }
+
+    @Test
+    void aValueIsNeverReadAsATemplate() {
+        assertThat(WarningAggregator.format("A={0}, B={1}", "{1}", "b")).isEqualTo("A={1}, B=b");
+        assertThat(WarningAggregator.format("{x} {} {0", "v")).isEqualTo("{x} {} {0");
+        assertThat(WarningAggregator.format("{0}{0}", (String) null)).isEqualTo("nullnull");
+        assertThatThrownBy(() -> WarningAggregator.format("{1}", "only one"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -210,6 +259,8 @@ class WarningAggregatorTest {
     void refusesNullArguments() {
         assertThatThrownBy(() -> warnings.warn(null, "x")).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> warnings.warn(STRANGER, null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> warnings.warn(STRANGER, "x", (String[]) null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     private List<String> messages() {
