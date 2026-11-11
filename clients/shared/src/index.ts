@@ -11,6 +11,7 @@ export type {
 } from "./generated/protocol";
 
 export {
+  NEW_SESSION_NOTICE,
   ServiceConnection,
   browserSocket,
   serviceUrl,

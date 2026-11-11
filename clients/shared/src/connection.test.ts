@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  NEW_SESSION_NOTICE,
   ServiceConnection,
   browserSocket,
   serviceUrl,
@@ -453,8 +454,82 @@ describe("ServiceConnection with device keys", () => {
     expect(socket.sent.at(-1)).toEqual({ type: "user.message", session_id: "s2", text: "again" });
     expect(connection.conversation.entries).toEqual([
       { kind: "user", text: "hi" },
+      { kind: "notice", text: NEW_SESSION_NOTICE },
       { kind: "user", text: "again" },
     ]);
+  });
+
+  it("UI-9: marks an answer cut off by a lost connection as interrupted, and it grows no more", async () => {
+    const { socket, timers, connection } = await connected();
+    connection.send("hello world");
+    socket.receive({ type: "agent.message.start", session_id: "s1", message_id: "m1" });
+    socket.receive({
+      type: "agent.message.delta",
+      session_id: "s1",
+      message_id: "m1",
+      text: "You",
+    });
+
+    socket.drop(1006);
+
+    expect(connection.conversation.entries).toEqual([
+      { kind: "user", text: "hello world" },
+      { kind: "agent", id: "m1", text: "You", complete: false, interrupted: true },
+    ]);
+    // A late part of the closed socket changes nothing.
+    socket.receive({
+      type: "agent.message.delta",
+      session_id: "s1",
+      message_id: "m1",
+      text: " said",
+    });
+    expect(connection.conversation.entries.at(-1)).toMatchObject({
+      text: "You",
+      interrupted: true,
+    });
+
+    // In the new session it stays as it was, above the notice.
+    await timers.fire();
+    socket.open();
+    socket.receive({ type: "session.started", session_id: "s2" });
+    expect(connection.conversation.entries.at(-2)).toMatchObject({ id: "m1", interrupted: true });
+  });
+
+  it("UI-9: leaves complete answers unmarked when the connection ends", async () => {
+    const { socket, connection } = await connected();
+    connection.send("hi");
+    socket.receive({ type: "agent.message.start", session_id: "s1", message_id: "m1" });
+    socket.receive({
+      type: "agent.message.delta",
+      session_id: "s1",
+      message_id: "m1",
+      text: "You said: hi",
+    });
+    socket.receive({ type: "agent.message.end", session_id: "s1", message_id: "m1" });
+
+    socket.drop(4001);
+
+    expect(connection.conversation.entries.at(-1)).toEqual({
+      kind: "agent",
+      id: "m1",
+      text: "You said: hi",
+      complete: true,
+    });
+  });
+
+  it("UI-10: announces every new session after the first, and accepts input only once it started", async () => {
+    const { socket, timers, connection } = await connected();
+    expect(connection.conversation.entries).toEqual([]);
+
+    socket.drop(1006);
+    await timers.fire();
+    socket.open();
+    expect(connection.conversation.canSend).toBe(false);
+    expect(connection.conversation.entries).toEqual([]);
+
+    socket.receive({ type: "session.started", session_id: "s2" });
+    expect(connection.conversation.entries).toEqual([{ kind: "notice", text: NEW_SESSION_NOTICE }]);
+    expect(connection.conversation.canSend).toBe(true);
   });
 
   it("becomes unpaired when the device check after a close answers 401", async () => {

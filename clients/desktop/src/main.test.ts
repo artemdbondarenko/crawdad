@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Conversation, PairResponse } from "@crawdad/shared";
+import { NEW_SESSION_NOTICE, type Conversation, type PairResponse } from "@crawdad/shared";
 import { render, type ChatConnection } from "./main";
 
 /** Plays the connection: the test decides what the conversation looks like and when it changes. */
@@ -207,6 +207,40 @@ describe("render", () => {
     });
 
     expect(root.querySelector("[data-kind=agent]")?.hasAttribute("data-pending")).toBe(true);
+  });
+
+  it("UI-9: marks an answer cut off by a lost connection as interrupted, not as arriving", () => {
+    connection.change({
+      state: "lost",
+      entries: [
+        { kind: "user", text: "hello" },
+        { kind: "agent", id: "m1", text: "You", complete: false, interrupted: true },
+      ],
+    });
+
+    const answer = find<HTMLElement>("[data-kind=agent]");
+    expect(answer.hasAttribute("data-interrupted")).toBe(true);
+    expect(answer.hasAttribute("data-pending")).toBe(false);
+    expect(answer.querySelector("[data-role=interrupted]")?.textContent).toBe("Interrupted");
+    expect(answer.textContent).toBe("You Interrupted");
+  });
+
+  it("UI-10: shows the notice of a new session below the earlier messages", () => {
+    connection.change({
+      state: "connected",
+      entries: [
+        { kind: "user", text: "hi" },
+        { kind: "notice", text: NEW_SESSION_NOTICE },
+      ],
+    });
+
+    expect(messages()).toEqual([
+      { kind: "user", text: "hi" },
+      {
+        kind: "notice",
+        text: "Reconnected — new session. The agent does not remember the messages above.",
+      },
+    ]);
   });
 
   it("shows an error from the service as a message", () => {

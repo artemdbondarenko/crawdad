@@ -82,7 +82,16 @@ export function render(
         const item = doc.createElement("li");
         item.dataset["kind"] = entry.kind;
         item.textContent = entry.text;
-        if (entry.kind === "agent" && !entry.complete) item.dataset["pending"] = "";
+        if (entry.kind === "agent" && entry.interrupted) {
+          // Cut off by a lost connection: marked, and no longer shown as still arriving (UI-9).
+          item.dataset["interrupted"] = "";
+          const mark = doc.createElement("span");
+          mark.dataset["role"] = "interrupted";
+          mark.textContent = "Interrupted";
+          item.append(" ", mark);
+        } else if (entry.kind === "agent" && !entry.complete) {
+          item.dataset["pending"] = "";
+        }
         return item;
       }),
     );
