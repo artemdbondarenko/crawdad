@@ -278,6 +278,7 @@ class TlsMaterialTest {
 
     @Test
     @Tag("TLS-3")
+    @Tag("LOG-4")
     void refusesATruncatedKeyWithoutQuotingIt() throws Exception {
         KeyPair pair = ecKeyPair();
         String key = sec1(pair);
@@ -356,6 +357,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("LOG-4")
     void keepsThePrivateKeyOutOfToString() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));

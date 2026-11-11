@@ -40,6 +40,7 @@ class LogLineTest {
 
     @Test
     @Tag("LOG-3")
+    @Tag("LOG-1")
     void aFailureIsWrittenWithItsCausesOnTheSameLineInsteadOfAStackTrace() {
         IOException cause = new IOException("disk full\nWARNING: forged");
         String line = format.format(record(OWN, Level.SEVERE, "Could not save the device paired from 127.0.0.1",
@@ -71,6 +72,7 @@ class LogLineTest {
     }
 
     @Test
+    @Tag("LOG-3")
     void installPutsTheFormatterOnTheHandlersOfTheRootLogger() {
         Logger root = Logger.getLogger("");
         Handler[] handlers = root.getHandlers();

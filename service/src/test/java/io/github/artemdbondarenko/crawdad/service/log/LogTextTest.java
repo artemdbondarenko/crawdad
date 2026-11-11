@@ -9,12 +9,16 @@ import org.junit.jupiter.api.Test;
 class LogTextTest {
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void lineBreaksAndTerminalEscapesBecomeHex() {
         assertThat(LogText.safe("evil\r\nWARNING: forged\u001B[31m"))
                 .isEqualTo("evil\\x0D\\x0AWARNING: forged\\x1B[31m");
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void everyC0DelAndC1CharacterIsEscapedAndTheirNeighboursAreNot() {
         assertThat(LogText.safe("\u0000\u0009\u001F")).isEqualTo("\\x00\\x09\\x1F");
         assertThat(LogText.safe("\u007F\u0080\u0085\u009B\u009F")).isEqualTo("\\x7F\\x80\\x85\\x9B\\x9F");
@@ -22,12 +26,16 @@ class LogTextTest {
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void aBackslashIsDoubledSoThatEscapesAreUnambiguous() {
         assertThat(LogText.safe("\\x0A")).isEqualTo("\\\\x0A");
         assertThat(LogText.safe("\\x0A")).isNotEqualTo(LogText.safe("\n"));
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void lineSeparatorsAndDirectionControlsBecomeUnicodeEscapes() {
         assertThat(LogText.safe("\u2028\u2029")).isEqualTo("\\u2028\\u2029");
         assertThat(LogText.safe("\u200E\u200F")).isEqualTo("\\u200E\\u200F");
@@ -40,6 +48,8 @@ class LogTextTest {
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void ordinaryHeaderValuesStayAsTheyAre() {
         assertThat(LogText.safe("http://127.0.0.1:8460")).isEqualTo("http://127.0.0.1:8460");
         assertThat(LogText.safe("Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0"))
@@ -48,6 +58,8 @@ class LogTextTest {
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void aLongValueIsCutAtTwoHundredCharactersWithTheDroppedCount() {
         assertThat(LogText.safe("a".repeat(200))).isEqualTo("a".repeat(200));
         assertThat(LogText.safe("a".repeat(201))).isEqualTo("a".repeat(200) + "\u2026(+1)");
@@ -55,11 +67,15 @@ class LogTextTest {
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void theLimitCountsTheSourceCharactersNotTheEscapes() {
         assertThat(LogText.safe("\n".repeat(250))).isEqualTo("\\x0A".repeat(200) + "\u2026(+50)");
     }
 
     @Test
+    @Tag("LOG-3")
+    @Tag("PAIRCMD-8")
     void theCutDoesNotSplitASurrogatePair() {
         String emoji = "\uD83D\uDE00";
 

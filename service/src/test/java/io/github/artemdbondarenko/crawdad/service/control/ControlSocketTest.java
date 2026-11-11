@@ -404,6 +404,8 @@ class ControlSocketTest {
 
     @Test
     @Tag("CMD-5")
+    @Tag("LOG-2")
+    @Tag("LOG-3")
     void anotherUserIsDisconnectedWithoutAnAnswerAndAWarning() throws Exception {
         socket.close();
         UserPrincipal mallory = () -> "mallory";
@@ -497,6 +499,9 @@ class ControlSocketTest {
 
     @Test
     @Tag("DEV-8")
+    @Tag("LOG-1")
+    @Tag("LOG-2")
+    @Tag("LOG-4")
     void aRevocationThatCannotBeSavedIsAServerErrorAndLoggedWithoutTheKey() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         // The registry writes next to devices.json; without its directory every write fails.

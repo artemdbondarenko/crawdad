@@ -273,6 +273,7 @@ class DeviceRegistryTest {
 
     @Test
     @Tag("DEV-6")
+    @Tag("LOG-2")
     void revokingClosesEveryConnectionOfTheDeviceOnceTheRevocationIsSaved() throws IOException {
         NewDevice laptop = registry.add("laptop", Listener.LOOPBACK);
         NewDevice phone = registry.add("phone", Listener.NETWORK);
@@ -292,6 +293,8 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("LOG-2")
+    @Tag("LOG-3")
     void theRevocationLogLineEscapesTheName() throws IOException {
         registry.add("ph\u001bone", Listener.NETWORK);
 

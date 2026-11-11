@@ -105,6 +105,7 @@ class CertificateWatcherTest {
 
     @Test
     @Tag("TLS-5")
+    @Tag("LOG-2")
     void reloadsARenewedPairForNewConnectionsAndKeepsOpenOnes() throws Exception {
         TlsFiles files = files(temp, temp);
         write(files, issue(NAME, NOW.plus(Duration.ofDays(30))));
@@ -148,6 +149,7 @@ class CertificateWatcherTest {
 
     @Test
     @Tag("TLS-5")
+    @Tag("LOG-2")
     void keepsTheOldCertificateWhenAFileIsCorrupted() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -165,6 +167,7 @@ class CertificateWatcherTest {
 
     @Test
     @Tag("TLS-5")
+    @Tag("LOG-2")
     void keepsTheOldCertificateWhenTheNameChanges() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -265,6 +268,7 @@ class CertificateWatcherTest {
 
     @Test
     @Tag("TLS-6")
+    @Tag("LOG-2")
     void warnsAtStartAboutACertificateEndingInLessThan14Days() throws Exception {
         TlsFiles files = files(temp, temp);
         Instant end = NOW.plus(Duration.ofDays(10));
