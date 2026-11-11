@@ -11,6 +11,7 @@ import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.SessionStarte
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.UserMessage;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -37,6 +38,7 @@ class ProtocolMessageTest {
 
     @ParameterizedTest(name = "{0} of {1}")
     @MethodSource("nonEmptyFields")
+    @Tag("MSG-7")
     void rejectsAMissingField(String field, String record, Function<String, ProtocolMessage> build) {
         assertThatThrownBy(() -> build.apply(null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -45,6 +47,7 @@ class ProtocolMessageTest {
 
     @ParameterizedTest(name = "{0} of {1}")
     @MethodSource("nonEmptyFields")
+    @Tag("MSG-7")
     void rejectsAnEmptyField(String field, String record, Function<String, ProtocolMessage> build) {
         assertThatThrownBy(() -> build.apply(""))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -52,6 +55,7 @@ class ProtocolMessageTest {
     }
 
     @Test
+    @Tag("MSG-7")
     void aDeltaMayBeEmptyButNotMissing() {
         assertThatCode(() -> new AgentMessageDelta("s1", "m1", "")).doesNotThrowAnyException();
         assertThatThrownBy(() -> new AgentMessageDelta("s1", "m1", null))

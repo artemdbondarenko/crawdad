@@ -116,6 +116,8 @@ class RevokeTest {
 
     @Test
     @Tag("DEV-6")
+    @Tag("MSG-11")
+    @Tag("MSG-14")
     void revokingClosesEveryConnectionOfTheDeviceAndLeavesOtherDevicesWorking() throws Exception {
         // The laptop is open in two tabs, the phone in one; each has its conversation.
         Inbox firstTab = connect(laptopKey);
@@ -145,6 +147,7 @@ class RevokeTest {
     @Test
     @Tag("DEV-6")
     @Tag("DEV-9")
+    @Tag("MSG-14")
     void afterRevocationTheOldKeyIsUnauthorizedOnWsAndDevice() throws Exception {
         String cookie = cookieName() + "=" + laptopKey;
         // The key works before the revocation.
@@ -194,6 +197,7 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void aHandshakeAdmittedJustBeforeTheRevocationClosesAsSoonAsItOpens() throws Exception {
         // The server announces an admitted device after the key check and the registration, before the 101.
         CountDownLatch admitted = new CountDownLatch(1);
@@ -235,6 +239,7 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void aHandshakeRacingTheRevocationIsClosedOrRefusedButNeverLeftOpen() throws Exception {
         for (int round = 0; round < 5; round++) {
             String name = "tablet-" + round;

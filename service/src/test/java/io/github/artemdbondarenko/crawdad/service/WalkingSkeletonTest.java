@@ -44,6 +44,7 @@ import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -81,6 +82,8 @@ class WalkingSkeletonTest {
     }
 
     @Test
+    @Tag("HTTP-1")
+    @Tag("MSG-3")
     void e1ClientPageAndWebSocketOnOnePort() throws Exception {
         // The owner opens the printed address: the service serves the client page from its own port.
         HttpResponse<String> page = HttpClient.newHttpClient().send(
@@ -96,6 +99,13 @@ class WalkingSkeletonTest {
     }
 
     @Test
+    @Tag("MSG-1")
+    @Tag("MSG-2")
+    @Tag("MSG-3")
+    @Tag("MSG-4")
+    @Tag("MSG-5")
+    @Tag("MSG-6")
+    @Tag("FAKE-1")
     void e2MessageGetsAStreamedAnswer() throws Exception {
         Inbox inbox = connect(pair());
         String sessionId = inbox.next().sessionId();
@@ -124,6 +134,8 @@ class WalkingSkeletonTest {
     }
 
     @Test
+    @Tag("WS-2")
+    @Tag("WS-4")
     void e3ForeignPageIsRefused() throws Exception {
         // A page from another origin tries to open the WebSocket: refused before the upgrade.
         assertThat(handshake(authority, "http://evil.example")).startsWith("HTTP/1.1 403");
@@ -136,6 +148,8 @@ class WalkingSkeletonTest {
     }
 
     @Test
+    @Tag("MSG-1")
+    @Tag("MSG-11")
     void aTooLargeMessageClosesTheConnection() throws Exception {
         Inbox inbox = connect(pair());
         inbox.next();

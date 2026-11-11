@@ -109,6 +109,38 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("HTTP-1")
+    void servesThePageItsFilesAndNothingElseOnItsPort() throws Exception {
+        server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
+        URI base = server.address();
+
+        assertThat(get(base.resolve("/index.html")).body()).contains("<title>Crawdad test page</title>");
+        assertThat(get(base.resolve("/assets/app.js")).statusCode()).isEqualTo(200);
+        // /ws without the upgrade, and any other path, is not found.
+        assertThat(get(base.resolve("/ws")).statusCode()).isEqualTo(404);
+        assertThat(get(base.resolve("/api")).statusCode()).isEqualTo(404);
+        assertThat(HTTP.send(HttpRequest.newBuilder(base.resolve("/index.html/x")).build(),
+                HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    @Tag("HTTP-2")
+    void aDirectoryIsForbiddenWithoutAListingAndRedirectedToItsSlash() throws Exception {
+        server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
+        URI base = server.address();
+
+        HttpResponse<String> directory = get(base.resolve("/assets/"));
+        assertThat(directory.statusCode()).isEqualTo(403);
+        assertThat(directory.body()).doesNotContain("app.js");
+
+        HttpResponse<String> withoutSlash = get(base.resolve("/assets"));
+        assertThat(withoutSlash.statusCode()).isBetween(301, 308);
+        assertThat(withoutSlash.headers().firstValue("Location")).hasValueSatisfying(
+                location -> assertThat(location).endsWith("/assets/"));
+    }
+
+    @Test
+    @Tag("HTTP-1")
     void servesTheClientPageAtTheRoot() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
 
@@ -121,6 +153,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("HTTP-1")
     void answersNotFoundForAMissingFile() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
 
@@ -592,6 +625,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("WS-4")
     void warnsAboutARefusedHandshakeWithItsSource() throws Exception {
         List<String> warnings = new CopyOnWriteArrayList<>();
         Handler collect = new Handler() {
@@ -627,6 +661,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("WS-1")
+    @Tag("WS-2")
     void upgradesToWebSocketForThePageItServes() throws Exception {
         DeviceRegistry registry = DeviceRegistry.open(data(), Clock.systemUTC());
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/", new FakeAgentAdapter(),
@@ -639,6 +675,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("WS-2")
+    @Tag("WS-4")
     void refusesTheWebSocketToAForeignPage() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
         String authority = server.address().getAuthority();
@@ -647,6 +685,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("HTTP-1")
     void servesTheBuiltClientFromTheMainBuild() throws Exception {
         // The clients module builds the page only in its package phase; a plain `mvn test` has none.
         Path builtClient = Path.of("../clients/desktop/dist/index.html");
@@ -725,6 +764,7 @@ class CrawdadServerTest {
     @Test
     @Tag("PAIR-6")
     @Tag("KEY-6")
+    @Tag("HTTP-3")
     void pairsAndChecksTheDeviceWithTheSecurityHeadersOfThePage() throws Exception {
         PairingCodes codes = new PairingCodes();
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/", new FakeAgentAdapter(),

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -48,6 +49,7 @@ class ProtocolSchemaTest {
     }
 
     @Test
+    @Tag("MSG-2")
     void definesExactlyTheMessagesOfTheContract() {
         Map<String, String> defined = new HashMap<>();
         messageDefinitions().forEach((name, definition) ->
@@ -88,6 +90,7 @@ class ProtocolSchemaTest {
         // no type at all
         "{\"session_id\":\"s1\"}"
     })
+    @Tag("MSG-7")
     void rejectsMessagesOutsideTheContract(String message) {
         assertThat(validate(message)).isNotEmpty();
     }

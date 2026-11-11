@@ -121,6 +121,7 @@ class HandshakeAuthTest {
     @ValueSource(strings = {"no key", "forged key", "revoked key", "loopback key on the network address",
         "network key on loopback", "key under the cookie name of another port"})
     @Tag("DEV-2")
+    @Tag("WS-5")
     void aHandshakeWithoutAKeyThatWorksHereIsUnauthorized(String presented) throws Exception {
         String loopbackCookie = loopbackCookieName();
         String networkCookie = networkCookieName();
@@ -150,6 +151,7 @@ class HandshakeAuthTest {
 
     @Test
     @Tag("DEV-2")
+    @Tag("WS-5")
     void aKeyPairedOnLoopbackOpensTheConversationAndRecordsTheLogin() throws Exception {
         try (Socket socket = new Socket("127.0.0.1", server.address().getPort())) {
             String status = handshake(socket, server.address().getAuthority(), "http://",
@@ -170,6 +172,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("WS-5")
     void aKeyPairedOnTheNetworkAddressOpensTheConversationThere() throws Exception {
         assertThat(network(networkCookieName() + "=" + phoneKey)).startsWith("HTTP/1.1 101");
 
@@ -179,6 +182,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("WS-5")
     void findsTheWorkingKeyAmongSeveralCookiesOfTheSameName() throws Exception {
         String name = loopbackCookieName();
 
@@ -188,6 +192,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("WS-4")
     void aForeignPageIsRefusedBeforeTheKeyIsLookedAt() throws Exception {
         String authority = server.address().getAuthority();
         String cookie = "Cookie: " + loopbackCookieName() + "=" + laptopKey;
@@ -226,6 +231,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void aConnectionIsRegisteredUnderItsDeviceUntilItCloses() throws Exception {
         String laptopId = device("laptop").id();
 
@@ -243,6 +249,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void anEndpointClosedBeforeItOpensClosesOnOpenWithoutAConversation() {
         CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id");
         List<String> closes = new ArrayList<>();
@@ -255,6 +262,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void anOpenEndpointClosesItsSession() {
         CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id");
         List<String> closes = new ArrayList<>();
@@ -267,6 +275,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("MSG-14")
     void aClosedEndpointLeavesTheRegistry() {
         ConnectionRegistry registry = new ConnectionRegistry();
         CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, registry, "id");

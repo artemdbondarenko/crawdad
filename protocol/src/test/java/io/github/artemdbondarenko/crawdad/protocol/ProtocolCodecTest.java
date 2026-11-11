@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.AgentMessageDelta;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.UserMessage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ProtocolCodecTest {
 
     @Test
+    @Tag("MSG-2")
     void readsAMessageIntoItsRecord() {
         ProtocolMessage message = ProtocolCodec.read("{\"type\":\"user.message\",\"session_id\":\"s1\",\"text\":\"hello\"}");
 
@@ -19,6 +21,7 @@ class ProtocolCodecTest {
     }
 
     @Test
+    @Tag("MSG-2")
     void writesFieldNamesInSnakeCaseWithTheTypeFirst() {
         String json = ProtocolCodec.write(new AgentMessageDelta("s1", "m1", "You"));
 
@@ -52,6 +55,7 @@ class ProtocolCodecTest {
         // the same field twice: which one counts would be a guess
         "{\"type\":\"user.message\",\"session_id\":\"s1\",\"text\":\"a\",\"text\":\"b\"}"
     })
+    @Tag("MSG-7")
     void rejectsWhatIsNotAProtocolMessage(String json) {
         assertThatThrownBy(() -> ProtocolCodec.read(json))
                 .isInstanceOf(ProtocolException.class)
