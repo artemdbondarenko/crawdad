@@ -51,6 +51,7 @@ import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -233,7 +234,9 @@ class CertificateWatcherTest {
     }
 
     @Test
-    void keepsTheOldContextWhenTheTlsFactoryRefusesTheReload() throws Exception {
+    @Tag("LOG-2")
+    @Tag("TLS-5")
+    void keepsTheOldContextWhenTheTlsFactoryRefusesTheReloadAndNamesTheFile() throws Exception {
         TlsFiles files = files(temp, temp);
         write(files, issue(NAME, NOW.plus(Duration.ofDays(30))));
         SslContextFactory.Server refusing = new SslContextFactory.Server() {
@@ -249,7 +252,7 @@ class CertificateWatcherTest {
 
         awaitWarning(message -> message.contains("refused for the test"));
         assertThat(messages(Level.WARNING)).containsExactly("Certificate not reloaded, still serving the previous one: "
-                + "java.lang.IllegalStateException: refused for the test");
+                + files.certificate() + ": java.lang.IllegalStateException: refused for the test");
         assertThat(messages(Level.INFO)).isEmpty();
     }
 

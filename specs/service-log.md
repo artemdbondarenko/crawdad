@@ -134,5 +134,3 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `LOG-2` | a renewed certificate that the TLS context refuses is reported without its file | #32 |
-| `LOG-3` | the cause of a failure is written as a stack trace, unescaped and over several lines | #32 |

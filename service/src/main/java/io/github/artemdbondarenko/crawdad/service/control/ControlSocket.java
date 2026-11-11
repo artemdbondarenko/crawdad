@@ -180,7 +180,7 @@ public final class ControlSocket implements Closeable {
         try {
             Files.deleteIfExists(path);
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Could not delete the control socket " + path, e);
+            LOG.log(Level.WARNING, "Could not delete the control socket " + LogText.safe(path.toString()), e);
         }
     }
 
@@ -224,7 +224,7 @@ public final class ControlSocket implements Closeable {
             }
         } catch (IOException e) {
             // The client left, or stayed silent past the deadline; nobody is there to answer.
-            LOG.log(Level.DEBUG, "Control socket connection ended: {0}", e.toString());
+            LOG.log(Level.DEBUG, "Control socket connection ended: {0}", LogText.cause(e));
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING, "Control socket request failed", e);
         } finally {
@@ -479,7 +479,7 @@ public final class ControlSocket implements Closeable {
         try {
             channel.close();
         } catch (IOException e) {
-            LOG.log(Level.DEBUG, "Could not close a control socket channel: {0}", e.toString());
+            LOG.log(Level.DEBUG, "Could not close a control socket channel: {0}", LogText.cause(e));
         }
     }
 }

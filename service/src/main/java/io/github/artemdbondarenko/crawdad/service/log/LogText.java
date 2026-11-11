@@ -25,8 +25,17 @@ public final class LogText {
         if (kept < value.length() && Character.isHighSurrogate(value.charAt(kept - 1))) {
             kept--;
         }
-        StringBuilder out = new StringBuilder(kept + 16);
-        for (int i = 0; i < kept; i++) {
+        String escaped = escape(value.substring(0, kept));
+        return kept < value.length() ? escaped + "…(+" + (value.length() - kept) + ")" : escaped;
+    }
+
+    /** As {@link #safe}, but whole: for a line written by a library, whose values cannot be told apart. */
+    public static String escape(String value) {
+        if (value == null) {
+            return "null";
+        }
+        StringBuilder out = new StringBuilder(value.length() + 16);
+        for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
             if (c == '\\') {
                 out.append("\\\\");
@@ -38,10 +47,24 @@ public final class LogText {
                 out.append(c);
             }
         }
-        if (kept < value.length()) {
-            out.append("…(+").append(value.length() - kept).append(')');
-        }
         return out.toString();
+    }
+
+    /**
+     * The failure and its causes on one line, such as {@code java.io.IOException: disk full; caused by:
+     * java.nio.file.AccessDeniedException: /x}, made safe as one value. No stack trace: an entry is one line.
+     */
+    public static String cause(Throwable failure) {
+        StringBuilder chain = new StringBuilder();
+        Throwable current = failure;
+        for (int depth = 0; current != null && depth < 8; depth++) {
+            if (depth > 0) {
+                chain.append("; caused by: ");
+            }
+            chain.append(current);
+            current = current.getCause() == current ? null : current.getCause();
+        }
+        return safe(chain.toString());
     }
 
     /** Line and paragraph separators and the bidirectional controls that reorder what a terminal shows. */

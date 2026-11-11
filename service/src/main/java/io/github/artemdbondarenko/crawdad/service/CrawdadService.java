@@ -7,6 +7,7 @@ import io.github.artemdbondarenko.crawdad.service.cli.Cli;
 import io.github.artemdbondarenko.crawdad.service.control.ControlSocket;
 import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
 import io.github.artemdbondarenko.crawdad.service.device.DeviceRegistry;
+import io.github.artemdbondarenko.crawdad.service.log.LogLine;
 import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
 import io.github.artemdbondarenko.crawdad.service.storage.InstanceLock;
@@ -41,6 +42,8 @@ public final class CrawdadService {
             System.exit(Cli.run(args, Cli.dataDirectory(DataDirectory::fromEnvironment), startCommand(), System.out,
                     System.err));
         }
+        // Every entry on one line, with no stack trace, from the first one on (LOG-3).
+        LogLine.install();
         Optional<CrawdadServer> server = start(args, DataDirectory.fromEnvironment(), System.out, System.err);
         if (server.isEmpty()) {
             System.exit(1);

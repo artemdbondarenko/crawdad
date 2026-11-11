@@ -208,7 +208,7 @@ public final class CrawdadServer {
                 Files.deleteIfExists(path);
             }
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Could not delete the temporary directory " + directory, e);
+            LOG.log(Level.WARNING, "Could not delete the temporary directory " + LogText.safe(directory.toString()), e);
         }
     }
 

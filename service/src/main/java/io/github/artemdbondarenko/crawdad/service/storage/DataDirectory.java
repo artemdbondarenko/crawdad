@@ -1,5 +1,6 @@
 package io.github.artemdbondarenko.crawdad.service.storage;
 
+import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.System.Logger;
@@ -65,7 +66,7 @@ public record DataDirectory(Path data, Path runtime) {
         Path runtimeHome = absolute(environment.get("XDG_RUNTIME_DIR"));
         if (runtimeHome == null) {
             Path fallback = data.resolve("run");
-            LOG.log(Level.WARNING, "XDG_RUNTIME_DIR is not set; the control socket goes to " + fallback);
+            LOG.log(Level.WARNING, "XDG_RUNTIME_DIR is not set; the control socket goes to " + LogText.safe(fallback.toString()));
             return new DataDirectory(data, fallback);
         }
         return new DataDirectory(data, runtimeHome.resolve("crawdad"));
