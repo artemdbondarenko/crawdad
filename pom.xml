@@ -41,6 +41,7 @@
     <jetty.version>12.1.14</jetty.version>
     <!-- Must equal the slf4j-api version Jetty depends on. -->
     <slf4j.version>2.0.17</slf4j.version>
+    <bouncycastle.version>1.86</bouncycastle.version>
   </properties>
 
   <dependencyManagement>
@@ -88,6 +89,16 @@
         <groupId>com.networknt</groupId>
         <artifactId>json-schema-validator</artifactId>
         <version>${json-schema-validator.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -220,6 +231,7 @@
               <licenseMerges>
                 <licenseMerge>Apache-2.0|Apache License, Version 2.0|The Apache Software License, Version 2.0|The Apache License, Version 2.0|Apache License 2.0|Apache 2.0|Apache 2</licenseMerge>
                 <licenseMerge>MIT|MIT License|The MIT License|The MIT License (MIT)</licenseMerge>
+                <licenseMerge>MIT|Bouncy Castle Licence</licenseMerge>
                 <licenseMerge>BSD-2-Clause|BSD 2-Clause License|The BSD 2-Clause License|Simplified BSD License</licenseMerge>
                 <licenseMerge>BSD-3-Clause|BSD 3-Clause License|The BSD 3-Clause License|New BSD License|Revised BSD License</licenseMerge>
                 <licenseMerge>ISC|ISC License</licenseMerge>

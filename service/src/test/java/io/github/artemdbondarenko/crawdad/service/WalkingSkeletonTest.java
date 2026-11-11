@@ -12,17 +12,25 @@ import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.UserMessage;
 import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent;
 import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
+import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
+import io.github.artemdbondarenko.crawdad.service.device.DeviceRegistry;
+import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes;
+import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpCookie;
 import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -37,22 +45,31 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The end-to-end path with a real server, a real {@link FakeAgentAdapter} and a real WebSocket, as
- * scenarios E1–E3 describe it. No browser takes part: the page is fetched over HTTP and the
- * handshake is made by a test client with the headers a browser would send.
+ * scenarios E1–E3 describe it. No browser takes part: the page is fetched over HTTP, the device
+ * pairs with a code over HTTP and the handshake is made by a test client with the headers and the key
+ * cookie a browser would send.
  */
 class WalkingSkeletonTest {
 
+    @TempDir
+    Path temp;
+
     private final CountingAdapter adapter = new CountingAdapter(new FakeAgentAdapter());
     private final WebSocketClient webSocketClient = new WebSocketClient();
+    private final PairingCodes codes = new PairingCodes();
     private CrawdadServer server;
     private String authority;
 
     @BeforeEach
     void start() throws Exception {
-        server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/", adapter);
+        DeviceRegistry devices = DeviceRegistry.open(new DataDirectory(temp.resolve("data"), temp.resolve("run")),
+                Clock.systemUTC());
+        server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/", adapter, Optional.empty(), devices,
+                new ConnectionRegistry(), codes);
         authority = server.address().getAuthority();
         webSocketClient.start();
     }
@@ -70,14 +87,17 @@ class WalkingSkeletonTest {
                 HttpRequest.newBuilder(server.address()).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(page.statusCode()).isEqualTo(200);
 
-        // The page connects to /ws on the same address; the service opens a session and says so.
-        Inbox inbox = connect();
+        // The owner enters the code of crawdad pair; the page gets the key cookie of this address.
+        HttpCookie key = pair();
+
+        // The page connects to /ws on the same address with the key; the service opens a session and says so.
+        Inbox inbox = connect(key);
         assertThat(inbox.next()).isInstanceOf(SessionStarted.class);
     }
 
     @Test
     void e2MessageGetsAStreamedAnswer() throws Exception {
-        Inbox inbox = connect();
+        Inbox inbox = connect(pair());
         String sessionId = inbox.next().sessionId();
 
         // The owner sends a text; the answer arrives as start, several parts and end.
@@ -117,7 +137,7 @@ class WalkingSkeletonTest {
 
     @Test
     void aTooLargeMessageClosesTheConnection() throws Exception {
-        Inbox inbox = connect();
+        Inbox inbox = connect(pair());
         inbox.next();
 
         // A frame one byte over the limit: the service closes the connection instead of reading it.
@@ -128,12 +148,26 @@ class WalkingSkeletonTest {
         assertThat(adapter.calls.get()).isEqualTo(1);
     }
 
-    private Inbox connect() throws Exception {
+    /** Exchanges a fresh code of {@code crawdad pair} for the key cookie, as the page does. */
+    private HttpCookie pair() throws Exception {
+        HttpResponse<String> paired = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(server.address().resolve("/pair"))
+                        .header("Origin", "http://" + authority)
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                "{\"code\":\"" + codes.issue(null).code() + "\"}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(paired.statusCode()).isEqualTo(204);
+        return HttpCookie.parse(paired.headers().firstValue("Set-Cookie").orElseThrow()).getFirst();
+    }
+
+    private Inbox connect(HttpCookie key) throws Exception {
         Inbox inbox = new Inbox();
-        ClientUpgradeRequest request = new ClientUpgradeRequest();
+        ClientUpgradeRequest request = new ClientUpgradeRequest(
+                URI.create("ws://" + authority + CrawdadServer.WEBSOCKET_PATH));
         request.setHeader("Origin", "http://" + authority);
-        URI uri = URI.create("ws://" + authority + CrawdadServer.WEBSOCKET_PATH);
-        inbox.session = webSocketClient.connect(inbox, uri, request).get(5, TimeUnit.SECONDS);
+        request.setCookies(List.of(new HttpCookie(key.getName(), key.getValue())));
+        inbox.session = webSocketClient.connect(inbox, request).get(5, TimeUnit.SECONDS);
         return inbox;
     }
 
@@ -185,8 +219,9 @@ class WalkingSkeletonTest {
         }
 
         @Override
-        public void onWebSocketClose(int statusCode, String reason) {
+        public void onWebSocketClose(int statusCode, String reason, Callback callback) {
             closed.complete(statusCode);
+            callback.succeed();
         }
 
         /** The server closing the connection is what some tests expect; nothing to report. */

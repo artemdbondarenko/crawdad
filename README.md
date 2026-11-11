@@ -5,10 +5,9 @@
 > **Status:** early development. The service and the client talk to a fake agent; Claude Code is
 > not connected yet.
 >
-> **No authentication yet.** The service listens on localhost, but any process on the same computer
-> can connect to it. Pairing, device keys and TLS required by
-> [ADR-0002](docs/adr/0002-service-and-thin-clients.md) are not implemented in this version. See
-> [the specification](specs/conversation.md#limitation-of-this-version).
+> Pairing, device keys and TLS required by [ADR-0002](docs/adr/0002-service-and-thin-clients.md)
+> are implemented as a proof of concept; their specification is being written. See
+> [development](docs/development.md#run-the-service) and [remote access](docs/remote-access.md).
 
 ## The problem
 

@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry.Connection;
 import io.github.artemdbondarenko.crawdad.service.device.DeviceRegistry.NewDevice;
 import io.github.artemdbondarenko.crawdad.service.device.DeviceRegistry.RevokeResult;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,9 +21,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,13 +43,35 @@ class DeviceRegistryTest {
     Path temp;
 
     private final MutableClock clock = new MutableClock(START);
+    private final ConnectionRegistry connections = new ConnectionRegistry();
+    private final List<LogRecord> records = new CopyOnWriteArrayList<>();
+    private final Handler collect = new Handler() {
+        @Override
+        public void publish(LogRecord record) {
+            records.add(record);
+        }
+
+        @Override
+        public void flush() {}
+
+        @Override
+        public void close() {}
+    };
+    // Held in a field: java.util.logging keeps loggers only weakly.
+    private final Logger log = Logger.getLogger(DeviceRegistry.class.getName());
     private DataDirectory directory;
     private DeviceRegistry registry;
 
     @BeforeEach
     void openRegistry() throws IOException {
+        log.addHandler(collect);
         directory = new DataDirectory(temp.resolve("data"), temp.resolve("run"));
         registry = DeviceRegistry.open(directory, clock);
+    }
+
+    @AfterEach
+    void stopCollecting() {
+        log.removeHandler(collect);
     }
 
     @Test
@@ -50,8 +81,8 @@ class DeviceRegistryTest {
         assertThat(registry.add("tablet", Listener.LOOPBACK).device().name()).isEqualTo("tablet-3");
 
         registry.add("phone", Listener.NETWORK);
-        registry.revoke("phone");
-        registry.revoke("tablet-2");
+        registry.revoke("phone", connections);
+        registry.revoke("tablet-2", connections);
 
         assertThat(registry.add("phone", Listener.NETWORK).device().name()).isEqualTo("phone");
         assertThat(registry.add("tablet", Listener.NETWORK).device().name()).isEqualTo("tablet-2");
@@ -111,7 +142,7 @@ class DeviceRegistryTest {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofHours(1));
 
-        RevokeResult result = registry.revoke("phone");
+        RevokeResult result = registry.revoke("phone", connections);
 
         assertThat(result).isInstanceOfSatisfying(RevokeResult.Revoked.class, revoked -> {
             assertThat(revoked.device().name()).isEqualTo("phone");
@@ -140,7 +171,7 @@ class DeviceRegistryTest {
     @Test
     void recordingALoginDoesNotBringARevokedDeviceBack() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
-        registry.revoke("phone");
+        registry.revoke("phone", connections);
         clock.advance(Duration.ofMinutes(1));
 
         Device seen = registry.recordLogin(phone.device().id(), "100.64.0.7", "Firefox/140");
@@ -163,7 +194,7 @@ class DeviceRegistryTest {
         clock.advance(Duration.ofMinutes(1));
         registry.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofMinutes(1));
-        registry.revoke("phone");
+        registry.revoke("phone", connections);
 
         assertThat(registry.devices(false)).extracting(Device::name).containsExactly("laptop");
         assertThat(registry.devices(true)).extracting(Device::name, Device::revokedAt).containsExactly(
@@ -176,9 +207,9 @@ class DeviceRegistryTest {
         registry.add("laptop", Listener.LOOPBACK);
         registry.add("phone", Listener.NETWORK);
         registry.add("tablet", Listener.NETWORK);
-        registry.revoke("tablet");
+        registry.revoke("tablet", connections);
 
-        RevokeResult result = registry.revoke("watch");
+        RevokeResult result = registry.revoke("watch", connections);
 
         assertThat(result).isEqualTo(new RevokeResult.NotFound(List.of("laptop", "phone")));
     }
@@ -186,13 +217,13 @@ class DeviceRegistryTest {
     @Test
     void revokingARevokedNameGivesTheDateOfRevocation() throws IOException {
         registry.add("phone", Listener.NETWORK);
-        registry.revoke("phone");
+        registry.revoke("phone", connections);
         clock.advance(Duration.ofDays(1));
         registry.add("phone", Listener.NETWORK);
-        registry.revoke("phone");
+        registry.revoke("phone", connections);
         clock.advance(Duration.ofDays(1));
 
-        RevokeResult result = registry.revoke("phone");
+        RevokeResult result = registry.revoke("phone", connections);
 
         assertThat(result).isEqualTo(new RevokeResult.AlreadyRevoked(START.plus(Duration.ofDays(1))));
     }
@@ -200,15 +231,77 @@ class DeviceRegistryTest {
     @Test
     void revokingANameThatIsActiveAgainRevokesTheActiveDevice() throws IOException {
         registry.add("phone", Listener.NETWORK);
-        registry.revoke("phone");
+        registry.revoke("phone", connections);
         clock.advance(Duration.ofDays(1));
         NewDevice again = registry.add("phone", Listener.NETWORK);
 
-        RevokeResult result = registry.revoke("phone");
+        RevokeResult result = registry.revoke("phone", connections);
 
         assertThat(result).isInstanceOfSatisfying(RevokeResult.Revoked.class,
                 revoked -> assertThat(revoked.device().id()).isEqualTo(again.device().id()));
         assertThat(registry.devices(false)).isEmpty();
+    }
+
+    @Test
+    void revokingClosesEveryConnectionOfTheDeviceOnceTheRevocationIsSaved() throws IOException {
+        NewDevice laptop = registry.add("laptop", Listener.LOOPBACK);
+        NewDevice phone = registry.add("phone", Listener.NETWORK);
+        List<String> closes = new ArrayList<>();
+        connections.register(laptop.device().id(), recording("laptop", "laptop tab 1", closes));
+        connections.register(phone.device().id(), recording("phone", "phone", closes));
+        connections.register(laptop.device().id(), recording("laptop", "laptop tab 2", closes));
+
+        RevokeResult result = registry.revoke("laptop", connections);
+
+        assertThat(result).isInstanceOfSatisfying(RevokeResult.Revoked.class,
+                revoked -> assertThat(revoked.device().id()).isEqualTo(laptop.device().id()));
+        // Each close saw the revocation already on disk; the phone's connection was not touched.
+        assertThat(closes).containsExactly("laptop tab 1 4001 unpaired, saved=true",
+                "laptop tab 2 4001 unpaired, saved=true");
+        assertThat(messages()).containsExactly("Device revoked: laptop, closed 2 connections");
+    }
+
+    @Test
+    void theRevocationLogLineEscapesTheName() throws IOException {
+        registry.add("ph\u001bone", Listener.NETWORK);
+
+        registry.revoke("ph\u001bone", connections);
+
+        assertThat(messages()).containsExactly("Device revoked: ph\\x1Bone, closed 0 connections");
+    }
+
+    @Test
+    void aRevocationThatCannotBeSavedClosesNothingAndKeepsTheDevice() throws IOException {
+        NewDevice phone = registry.add("phone", Listener.NETWORK);
+        List<String> closes = new ArrayList<>();
+        connections.register(phone.device().id(), recording("phone", "phone", closes));
+        // The registry writes next to devices.json; without its directory every write fails.
+        Files.move(directory.data(), temp.resolve("moved"));
+
+        assertThatThrownBy(() -> registry.revoke("phone", connections)).isInstanceOf(IOException.class);
+
+        assertThat(closes).isEmpty();
+        assertThat(registry.devices(false)).containsExactly(phone.device());
+        assertThat(registry.authenticate(phone.key(), Listener.NETWORK)).isPresent();
+        assertThat(messages()).isEmpty();
+    }
+
+    @Test
+    void anUnknownOrAlreadyRevokedNameClosesNothing() throws IOException {
+        NewDevice laptop = registry.add("laptop", Listener.LOOPBACK);
+        NewDevice phone = registry.add("phone", Listener.NETWORK);
+        registry.revoke("phone", connections);
+        records.clear();
+        List<String> closes = new ArrayList<>();
+        connections.register(laptop.device().id(), recording("laptop", "laptop", closes));
+        // Revoked devices have no connections; one registered anyway shows that nothing looks for it.
+        connections.register(phone.device().id(), recording("phone", "phone", closes));
+
+        assertThat(registry.revoke("watch", connections)).isInstanceOf(RevokeResult.NotFound.class);
+        assertThat(registry.revoke("phone", connections)).isInstanceOf(RevokeResult.AlreadyRevoked.class);
+
+        assertThat(closes).isEmpty();
+        assertThat(messages()).isEmpty();
     }
 
     @Test
@@ -218,7 +311,7 @@ class DeviceRegistryTest {
         NewDevice tablet = registry.add("tablet", Listener.NETWORK);
         clock.advance(Duration.ofMinutes(3));
         registry.recordLogin(laptop.device().id(), "127.0.0.1", "Chrome/150");
-        registry.revoke("tablet");
+        registry.revoke("tablet", connections);
 
         DeviceRegistry reloaded = DeviceRegistry.open(directory, clock);
 
@@ -278,6 +371,30 @@ class DeviceRegistryTest {
         assertThatThrownBy(() -> DeviceRegistry.open(directory, clock))
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining(file.toString());
+    }
+
+    /**
+     * A connection of the device {@code name} that records how it was closed and whether the file
+     * already showed the device revoked by then.
+     */
+    private Connection recording(String name, String label, List<String> closes) {
+        return (statusCode, reason) -> {
+            boolean saved;
+            try {
+                saved = DeviceRegistry.open(directory, clock).devices(false).stream()
+                        .noneMatch(device -> device.name().equals(name));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            closes.add(label + " " + statusCode + " " + reason + ", saved=" + saved);
+        };
+    }
+
+    /** The INFO lines the registry wrote, formatted as a log shows them. */
+    private List<String> messages() {
+        SimpleFormatter formatter = new SimpleFormatter();
+        return records.stream().filter(record -> record.getLevel() == java.util.logging.Level.INFO)
+                .map(formatter::formatMessage).toList();
     }
 
     private static String sha256(String key) {

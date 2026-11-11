@@ -28,4 +28,7 @@ public sealed interface PairingOutcome {
 
     /** A newer {@code crawdad pair} issued another code before this one ended. */
     record Replaced() implements PairingOutcome {}
+
+    /** The code was right, but the device could not be saved; the code stays used up. */
+    record Failed() implements PairingOutcome {}
 }
