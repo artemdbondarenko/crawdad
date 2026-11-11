@@ -104,6 +104,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void reloadsARenewedPairForNewConnectionsAndKeepsOpenOnes() throws Exception {
         TlsFiles files = files(temp, temp);
         write(files, issue(NAME, NOW.plus(Duration.ofDays(30))));
@@ -127,6 +128,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void keepsTheOldCertificateWhenOnlyTheCertificateIsReplaced() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -145,6 +147,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void keepsTheOldCertificateWhenAFileIsCorrupted() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -161,6 +164,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void keepsTheOldCertificateWhenTheNameChanges() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -180,6 +184,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void reloadsOnceWhenCertificateAndKeyArriveWithinThePause() throws Exception {
         TlsFiles files = files(temp, temp);
         write(files, issue(NAME, NOW.plus(Duration.ofDays(30))));
@@ -200,6 +205,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void watchesBothDirectoriesWhenTheyDiffer() throws Exception {
         TlsFiles files = files(Files.createDirectory(temp.resolve("certs")), Files.createDirectory(temp.resolve("keys")));
         write(files, issue(NAME, NOW.plus(Duration.ofDays(30))));
@@ -216,6 +222,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void ignoresOtherFilesInTheDirectory() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair old = issue(NAME, NOW.plus(Duration.ofDays(30)));
@@ -257,6 +264,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-6")
     void warnsAtStartAboutACertificateEndingInLessThan14Days() throws Exception {
         TlsFiles files = files(temp, temp);
         Instant end = NOW.plus(Duration.ofDays(10));
@@ -268,6 +276,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-6")
     void warnsOnlyWhenLessThan14DaysRemain() throws Exception {
         TlsFiles files = files(temp, temp);
         Instant end = NOW.plus(Duration.ofDays(60));
@@ -288,6 +297,7 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-6")
     void repeatsTheExpiryCheckOnTheTimerUntilTheCertificateIsRenewed() throws Exception {
         TlsFiles files = files(temp, temp);
         Pair ending = issue(NAME, NOW.plus(Duration.ofDays(10)));
@@ -310,12 +320,14 @@ class CertificateWatcherTest {
     }
 
     @Test
+    @Tag("TLS-6")
     void checksExpiryDailyByDefault() {
         assertThat(CertificateWatcher.EXPIRY_CHECK_INTERVAL).isEqualTo(Duration.ofDays(1));
         assertThat(CertificateWatcher.PAUSE).isEqualTo(Duration.ofSeconds(1));
     }
 
     @Test
+    @Tag("TLS-6")
     void stillChecksExpiryWhenTheFilesCannotBeWatched() throws Exception {
         TlsFiles files = new TlsFiles(temp.resolve("node.crt"), temp.resolve("missing").resolve("node.key"));
         Instant end = NOW.plus(Duration.ofDays(10));

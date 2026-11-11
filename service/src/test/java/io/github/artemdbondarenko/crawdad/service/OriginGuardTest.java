@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -52,6 +53,7 @@ class OriginGuardTest {
         "https://laptop.example.ts.net:8460, laptop.example.ts.net:8460",
         "HTTPS://Laptop.Example.TS.net:8460, LAPTOP.example.ts.net:8460"
     })
+    @Tag("NET-9")
     void letsThePageOfTheNetworkAddressConnectOverTls(String origin, String host) {
         assertThat(network.allows(origin, host)).isTrue();
     }
@@ -66,6 +68,7 @@ class OriginGuardTest {
         "https://100.101.102.103:8460, 100.101.102.103:8460",
         "https://laptop.example.ts.net:8460, 100.101.102.103:8460"
     })
+    @Tag("NET-9")
     void rejectsOtherPagesOnTheNetworkAddress(String origin, String host) {
         assertThat(network.allows(origin, host)).isFalse();
     }
@@ -96,6 +99,7 @@ class OriginGuardTest {
     }
 
     @Test
+    @Tag("NET-9")
     void leavesOutTheDefaultPortOfTheScheme() {
         // A browser omits the default port in both headers, so the guard does too.
         OriginGuard tls = new OriginGuard("https", "laptop.example.ts.net", 443);
@@ -109,6 +113,7 @@ class OriginGuardTest {
     }
 
     @Test
+    @Tag("NET-9")
     void keepsAPortThatIsDefaultOnlyForTheOtherScheme() {
         OriginGuard tlsOn80 = new OriginGuard("https", "laptop.example.ts.net", 80);
         OriginGuard plainOn443 = new OriginGuard("http", "127.0.0.1", 443);
@@ -120,6 +125,7 @@ class OriginGuardTest {
     }
 
     @Test
+    @Tag("NET-9")
     void namesTheAddressItGuards() {
         assertThat(loopback.address()).isEqualTo(URI.create("http://127.0.0.1:8460/"));
         assertThat(network.address()).isEqualTo(URI.create("https://laptop.example.ts.net:8460/"));

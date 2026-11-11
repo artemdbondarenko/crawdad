@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,6 +32,8 @@ class ServiceConfigTest {
     private static final ServiceConfig.HostResolver LITERALS = names(Map.of());
 
     @Test
+    @Tag("NET-1")
+    @Tag("NET-2")
     void listensOnLocalhostOnlyByDefault() {
         ServiceConfig config = ServiceConfig.fromArgs();
 
@@ -40,6 +43,8 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-1")
+    @Tag("NET-2")
     void readsHostAndPortFromArguments() {
         ServiceConfig config = ServiceConfig.fromArgs(LITERALS, "--host", "192.168.1.5", "--port", "9000");
 
@@ -47,11 +52,13 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-2")
     void portZeroMeansAnyFreePort() {
         assertThat(ServiceConfig.fromArgs("--port", "0").port()).isZero();
     }
 
     @Test
+    @Tag("NET-1")
     void acceptsTheHighestPort() {
         assertThat(ServiceConfig.fromArgs("--port", "65535").port()).isEqualTo(65535);
     }
@@ -66,6 +73,7 @@ class ServiceConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"::1", "[::1]", "fe80::1"})
+    @Tag("NET-3")
     void rejectsAnIpv6Host(String host) {
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", host))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -76,11 +84,14 @@ class ServiceConfigTest {
     @ParameterizedTest
     @ValueSource(strings = {"10.1.2.3", "172.16.0.1", "172.31.255.254", "192.168.0.6", "100.64.0.1",
         "100.127.255.254", "169.254.1.1"})
+    @Tag("NET-5")
     void acceptsAPrivateNetworkAddress(String host) {
         assertThat(ServiceConfig.fromArgs(LITERALS, "--host", host).host()).isEqualTo(host);
     }
 
     @Test
+    @Tag("NET-3")
+    @Tag("NET-5")
     void acceptsAHostNameThatResolvesToAPrivateAddress() {
         ServiceConfig config = ServiceConfig.fromArgs(names(Map.of("pc.tailnet.ts.net", "100.101.102.103")),
                 "--host", "pc.tailnet.ts.net");
@@ -90,6 +101,7 @@ class ServiceConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"127.0.0.1", "127.0.0.5", "localhost"})
+    @Tag("NET-5")
     void rejectsALoopbackHostBecauseLoopbackIsAlwaysServed(String host) {
         // The owner gets the loopback address over HTTP anyway; --host is only for a network address.
         assertThatThrownBy(() -> ServiceConfig.fromArgs(names(Map.of("localhost", "127.0.0.1")), "--host", host))
@@ -100,6 +112,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-5")
     void rejectsAllInterfaces() {
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", "0.0.0.0"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -109,6 +122,7 @@ class ServiceConfigTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"8.8.8.8", "172.32.0.1", "100.128.0.1", "192.169.0.1", "11.0.0.1"})
+    @Tag("NET-5")
     void rejectsAPublicAddress(String host) {
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", host))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -116,6 +130,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-5")
     void rejectsAHostNameThatResolvesToAPublicAddress() {
         // A name is judged by where it points, so a public machine cannot hide behind a friendly name.
         assertThatThrownBy(() -> ServiceConfig.fromArgs(names(Map.of("myvpn.example.com", "203.0.113.7")),
@@ -125,6 +140,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-5")
     void rejectsAHostNameWhenAnyOfItsAddressesIsPublic() {
         ServiceConfig.HostResolver twoAddresses = host -> new InetAddress[] {
             InetAddress.getByName("192.168.0.6"), InetAddress.getByName("203.0.113.7")};
@@ -135,6 +151,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-3")
     void skipsTheIpv6AddressesOfAHostName() {
         // MagicDNS names resolve to a 100.x address and an IPv6 one; IPv6 is not supported yet.
         ServiceConfig.HostResolver dualStack = host -> new InetAddress[] {
@@ -145,6 +162,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-3")
     void rejectsAHostNameWithOnlyIpv6Addresses() {
         ServiceConfig.HostResolver ipv6Only = host -> new InetAddress[] {InetAddress.getByName("fd00::1")};
 
@@ -155,6 +173,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("NET-3")
     void rejectsAHostNameThatDoesNotResolve() {
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", "no-such-host"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -171,6 +190,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void readsBothCertificatePaths() {
         ServiceConfig config = ServiceConfig.fromArgs(LITERALS, "--host", "100.64.0.1",
                 "--tls-cert", "/certs/pc.crt", "--tls-key", "/certs/pc.key");
@@ -179,12 +199,14 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("TLS-7")
     void withoutCertificatePathsTheServiceIssuesItsOwnCertificate() {
         assertThat(ServiceConfig.fromArgs(LITERALS, "--host", "100.64.0.1").tls()).isEqualTo(Optional.empty());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"--tls-cert", "--tls-key"})
+    @Tag("TLS-2")
     void rejectsOnlyOneCertificatePath(String option) {
         // Half a configuration must not silently fall back to the service's own certificate.
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", "100.64.0.1", option, "/certs/x"))
@@ -195,6 +217,7 @@ class ServiceConfigTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void rejectsCertificatePathsWithoutANetworkAddress() {
         // Loopback is plain HTTP, so certificate files without --host would be silently ignored.
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--tls-cert", "/c.crt", "--tls-key", "/c.key"))

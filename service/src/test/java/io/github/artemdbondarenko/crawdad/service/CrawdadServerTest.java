@@ -78,6 +78,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CrawdadServerTest {
 
@@ -126,6 +128,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-4")
     void reportsTheAddressItListensOn() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
 
@@ -173,6 +176,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-4")
     void mainStartsTheServerAndPrintsWhereToOpenIt() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -186,6 +190,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-4")
     void printsBothAddressesAndNoFingerprintWithCertificateFiles() throws Exception {
         ServiceConfig config = new ServiceConfig(NETWORK_HOST, 0, Optional.of(writeCertificate(
                 dns(NETWORK_NAME), ip(NETWORK_HOST))));
@@ -203,6 +208,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-4")
+    @Tag("TLS-7")
     void printsTheRootFingerprintWithTheOwnCertificate() throws Exception {
         TlsMaterial material = TlsMaterial.read(writeCertificate(ip(NETWORK_HOST)));
         NetworkCertificate own = new NetworkCertificate(material.privateKey(), material.chain(), NETWORK_HOST,
@@ -221,6 +228,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-5")
     void reloadsRenewedCertificateFilesUntilTheServerStops() throws Exception {
         Set<Thread> before = Thread.getAllStackTraces().keySet();
         ServiceConfig config = new ServiceConfig(NETWORK_HOST, 0, Optional.of(writeCertificate(
@@ -255,6 +263,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-7")
+    @Tag("TLS-9")
     void issuesTheOwnCertificateForHostWithoutCertificateFiles() throws Exception {
         LocalCa ca = LocalCa.forThisMachine(new DataDirectory(temp.resolve("data"), temp.resolve("run")));
 
@@ -268,6 +278,9 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-2")
+    @Tag("TLS-4")
+    @Tag("NET-9")
     void takesTheCertificateFilesAndTheirNameWhenGiven() throws Exception {
         TlsFiles files = writeCertificate(dns(NETWORK_NAME), ip(NETWORK_HOST));
 
@@ -283,6 +296,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-7")
     void needsNoCertificateWithoutHost() throws Exception {
         assertThat(NetworkCertificate.forConfig(new ServiceConfig("127.0.0.1", 0), () -> {
             throw new AssertionError("the own root must not be touched without --host");
@@ -290,6 +304,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesToStartWithAnUnusableCertificateFile() {
         Path missing = temp.resolve("missing.crt");
         ServiceConfig config = new ServiceConfig(NETWORK_HOST, 0,
@@ -301,6 +316,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesToStartWithAnUnusableRoot() throws Exception {
         DataDirectory data = new DataDirectory(temp.resolve("data"), temp.resolve("run"));
         LocalCa ca = LocalCa.forThisMachine(data);
@@ -327,6 +343,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-1")
+    @Tag("NET-2")
     void listensOnlyOnLoopbackWithoutHost() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
         int port = server.address().getPort();
@@ -338,6 +356,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-1")
+    @Tag("NET-2")
     void servesLoopbackOverHttpAndTheNetworkAddressOverTls() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         URI network = server.networkAddress().orElseThrow();
@@ -353,6 +373,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-2")
     void servesBothAddressesOnTheConfiguredPort() throws Exception {
         int port;
         try (ServerSocket probe = new ServerSocket(0, 1, InetAddress.getByName(NETWORK_HOST))) {
@@ -367,6 +388,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-6")
     void answersPlainHttpOnTheNetworkAddressWithoutARedirect() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         URI network = server.networkAddress().orElseThrow();
@@ -381,6 +403,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-7")
     void doesNotSpeakTlsOnLoopback() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
 
@@ -393,6 +416,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-9")
     void acceptsTheWebSocketOfTheNetworkPageOverTls() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         URI network = server.networkAddress().orElseThrow();
@@ -405,6 +429,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-9")
     void refusesAPlainHttpOriginOnTheTlsConnector() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         URI network = server.networkAddress().orElseThrow();
@@ -416,6 +441,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-9")
     void refusesATlsOriginOnLoopback() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         String authority = server.address().getAuthority();
@@ -467,6 +493,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-10")
     void servesAnIpAddressWithoutSni() throws Exception {
         // Browsers send no SNI for an IP address; a certificate for that IP must still serve it.
         startWithHost(ip(NETWORK_HOST));
@@ -484,6 +511,7 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("TLS-1")
     void speaksTls12AndNewerOnly() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         SslContextFactory.Server factory = server.networkTls().orElseThrow();
@@ -500,6 +528,44 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("NET-8")
+    void closesASilentConnectionToTheNetworkAddressAfter30Seconds() throws Exception {
+        startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
+
+        // Read from the connector rather than waited for: the test would take half a minute.
+        assertThat(server.networkIdleTimeout()).contains(Duration.ofSeconds(30));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @Tag("TLS-11")
+    @ValueSource(strings = {"/ca.crt", "/ca.key", "/tls/ca.crt", "/tls/ca.key", "/data/tls/ca.crt",
+        "/../tls/ca.crt", "/assets/../../tls/ca.key", "/assets/..%2F..%2Ftls%2Fca.key", "/devices.json"})
+    void servesNeitherTheRootCertificateNorAnyKeyOnEitherAddress(String path) throws Exception {
+        // The own root is in the data directory of the service, next to the registry it serves from.
+        LocalCa.forThisMachine(data()).issue("10.1.2.3");
+        startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
+        URI loopback = server.address();
+        int port = server.networkAddress().orElseThrow().getPort();
+
+        String overHttp;
+        try (Socket socket = new Socket(loopback.getHost(), loopback.getPort())) {
+            socket.setSoTimeout(5000);
+            socket.getOutputStream().write(get(path, loopback.getAuthority()));
+            overHttp = readUntilClosed(socket.getInputStream());
+        }
+        String overTls;
+        try (SSLSocket socket = tls(port, NETWORK_NAME)) {
+            socket.getOutputStream().write(get(path, NETWORK_NAME + ":" + port));
+            overTls = readUntilClosed(socket.getInputStream());
+        }
+
+        for (String answer : List.of(overHttp, overTls)) {
+            assertThat(answer).doesNotStartWith("HTTP/1.1 200").doesNotContain("-----BEGIN");
+        }
+    }
+
+    @Test
+    @Tag("NET-8")
     void limitsSimultaneousConnectionsOnTheNetworkAddress() throws Exception {
         startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
         int port = server.networkAddress().orElseThrow().getPort();
@@ -815,6 +881,12 @@ class CrawdadServerTest {
                 + "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
                 + "Sec-WebSocket-Version: 13\r\n"
                 + "\r\n";
+    }
+
+    /** A raw {@code GET} of the path, sent as it is, so that a dot segment or an encoded slash reaches the server. */
+    private static byte[] get(String path, String host) {
+        return ("GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n")
+                .getBytes(StandardCharsets.US_ASCII);
     }
 
     private static String page(String host) {
