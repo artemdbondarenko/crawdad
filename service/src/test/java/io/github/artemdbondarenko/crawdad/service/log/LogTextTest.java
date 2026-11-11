@@ -2,6 +2,7 @@ package io.github.artemdbondarenko.crawdad.service.log;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The non-ASCII literals here are the characters under test, written as escapes. */
@@ -69,5 +70,22 @@ class LogTextTest {
     @Test
     void nullIsWrittenAsNull() {
         assertThat(LogText.safe(null)).isEqualTo("null");
+    }
+
+    @Test
+    @Tag("LOG-3")
+    void escapeEscapesAWholeLineWithoutCuttingIt() {
+        assertThat(LogText.escape("a".repeat(300) + "\n\\")).isEqualTo("a".repeat(300) + "\\x0A\\\\");
+        assertThat(LogText.escape(null)).isEqualTo("null");
+    }
+
+    @Test
+    @Tag("LOG-3")
+    void aCauseIsTheChainOfFailuresOnOneSafeLine() {
+        Exception failure = new IllegalStateException("outer", new java.io.IOException("inner\r\nforged"));
+
+        assertThat(LogText.cause(failure)).isEqualTo(
+                "java.lang.IllegalStateException: outer; caused by: java.io.IOException: inner\\x0D\\x0Aforged");
+        assertThat(LogText.cause(new RuntimeException("x".repeat(300)))).endsWith("\u2026(+" + (300 + 28 - 200) + ")");
     }
 }

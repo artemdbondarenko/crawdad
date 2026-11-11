@@ -140,7 +140,7 @@ public final class CertificateWatcher implements AutoCloseable {
             return service;
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Certificate files are not watched, a renewed certificate needs a restart"
-                    + " of the service: {0}", LogText.safe(e.toString()));
+                    + " of the service: {0}", LogText.cause(e));
             closeQuietly(service);
             return null;
         }
@@ -196,7 +196,8 @@ public final class CertificateWatcher implements AutoCloseable {
         try {
             material = TlsMaterial.read(files, clock);
         } catch (UnusableFileException e) {
-            notReloaded(e.getMessage());
+            // The message names the file with the problem, which may be the key.
+            notReloaded(LogText.safe(e.getMessage()));
             return;
         }
         if (!material.addressName().equals(addressName)) {
@@ -215,7 +216,7 @@ public final class CertificateWatcher implements AutoCloseable {
                 factory.setKeyStorePassword(password);
             });
         } catch (Exception e) {
-            notReloaded(e.toString());
+            notReloaded(LogText.safe(files.certificate().toString()) + ": " + LogText.cause(e));
             return;
         }
         notAfter = material.notAfter();
@@ -223,8 +224,9 @@ public final class CertificateWatcher implements AutoCloseable {
                 LogText.safe(files.certificate().toString()), notAfter.toString());
     }
 
+    /** {@code reason}, already safe, starts with the file it is about. */
     private static void notReloaded(String reason) {
-        LOG.log(Level.WARNING, "Certificate not reloaded, still serving the previous one: {0}", LogText.safe(reason));
+        LOG.log(Level.WARNING, "Certificate not reloaded, still serving the previous one: {0}", reason);
     }
 
     private void checkExpiry() {

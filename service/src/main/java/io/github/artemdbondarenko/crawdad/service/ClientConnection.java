@@ -5,6 +5,7 @@ import io.github.artemdbondarenko.crawdad.protocol.ProtocolException;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage;
 import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent;
+import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.function.Consumer;
@@ -55,7 +56,7 @@ final class ClientConnection {
             adapter.sendMessage(sessionId, user.text(), event -> send(toMessage(event)));
         } catch (RuntimeException e) {
             // The cause stays in the log: it may hold internals the client has no business seeing.
-            LOG.log(Level.WARNING, "The agent failed to answer in session " + sessionId, e);
+            LOG.log(Level.WARNING, "The agent failed to answer in session " + LogText.safe(sessionId), e);
             sendError("The agent could not answer");
         }
     }
