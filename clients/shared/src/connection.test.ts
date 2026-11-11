@@ -360,6 +360,34 @@ describe("ServiceConnection with device keys", () => {
     expect(socket.url).toBe("wss://127.0.0.1:8460/ws");
   });
 
+  it("UI-1: says the address is wrong and stops when the service refuses the page with 403", async () => {
+    const { socket, device, timers, connection } = create();
+    device.answers.push(403);
+
+    connection.start();
+    await settle();
+
+    // Opened at another name of the machine, such as localhost: no retry can fix that.
+    expect(connection.conversation.state).toBe("wrong_address");
+    expect(connection.conversation.canSend).toBe(false);
+    expect(socket.opened).toBe(0);
+    expect(timers.waiting).toBe(0);
+  });
+
+  it("UI-1: stops on 403 from the device check after a lost connection too", async () => {
+    const { socket, device, timers, connection } = create();
+    device.answers.push(200, 403);
+
+    connection.start();
+    await settle();
+    socket.drop(1006);
+    await timers.fire();
+
+    expect(connection.conversation.state).toBe("wrong_address");
+    expect(socket.opened).toBe(1);
+    expect(timers.waiting).toBe(0);
+  });
+
   it("is unpaired and stops when the service does not know the device", async () => {
     const { socket, device, timers, connection } = create();
     device.answers.push(401);
@@ -444,7 +472,7 @@ describe("ServiceConnection with device keys", () => {
 
   it("retries an unreachable service with pauses doubling up to 30 seconds", async () => {
     const { socket, device, timers, connection } = create();
-    device.answers.push("offline", 503, 403, 500, "offline", "offline", "offline", "offline");
+    device.answers.push("offline", 503, 502, 500, "offline", "offline", "offline", "offline");
 
     connection.start();
     await settle();

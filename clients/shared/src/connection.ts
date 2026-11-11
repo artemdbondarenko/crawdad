@@ -42,9 +42,15 @@ export interface ConnectionDependencies {
 /**
  * `connecting` until the first session; `lost` after a close, while reconnecting; `unpaired` when the
  * service does not know this device (the page asks for a pairing code); `revoked` after close code
- * 4001. In `unpaired` and `revoked` the connection stops until `start()` is called again.
+ * 4001; `wrong_address` when the service refuses the page for its `Origin` or `Host` (`UI-1`): it was
+ * not opened at the address the service prints. In `unpaired`, `revoked` and `wrong_address` the
+ * connection stops until `start()` is called again.
  */
-export type ConnectionState = "connecting" | "connected" | "lost" | "unpaired" | "revoked";
+export type ConnectionState =
+  "connecting" | "connected" | "lost" | "unpaired" | "revoked" | "wrong_address";
+
+/** The states in which the connection has stopped and waits for `start()`. */
+type HaltedState = "unpaired" | "revoked" | "wrong_address";
 
 export type ConversationEntry =
   | { kind: "user"; text: string }
@@ -132,7 +138,7 @@ export class ServiceConnection {
     if (this.running) return;
     this.running = true;
     this.pauseMs = FIRST_PAUSE_MS;
-    if (this.state === "unpaired" || this.state === "revoked") {
+    if (this.state === "unpaired" || this.state === "revoked" || this.state === "wrong_address") {
       this.state = "connecting";
       this.changed();
     }
@@ -196,8 +202,10 @@ export class ServiceConnection {
       this.connect(run);
     } else if (status === 401) {
       this.halt("unpaired");
+    } else if (status === 403) {
+      // Origin or Host do not match: trying again cannot help, the page must be opened elsewhere.
+      this.halt("wrong_address");
     } else {
-      // A 403 means Origin or Host do not match; it is retried like an unreachable service.
       this.scheduleRetry(run);
     }
   }
@@ -229,7 +237,7 @@ export class ServiceConnection {
   }
 
   /** Stops in a state only `start()` leaves: no socket, no retries. */
-  private halt(state: "unpaired" | "revoked"): void {
+  private halt(state: HaltedState): void {
     this.stop();
     this.state = state;
     this.changed();

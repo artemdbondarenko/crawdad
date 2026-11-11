@@ -25,6 +25,7 @@ const STATE_LABELS: Record<ConnectionState, string> = {
   lost: "Connection lost",
   unpaired: "This device is not paired",
   revoked: "This device was unpaired",
+  wrong_address: "Open this page at the address Crawdad prints when it starts",
 };
 
 /** States in which the page shows the pairing screen instead of the chat. */
