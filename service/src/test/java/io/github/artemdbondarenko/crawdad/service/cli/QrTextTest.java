@@ -3,11 +3,13 @@ package io.github.artemdbondarenko.crawdad.service.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class QrTextTest {
 
     @Test
+    @Tag("PAIRCMD-1")
     void theTextDecodesBackToTheEncodedAddress() throws Exception {
         String address = "https://100.64.0.1:8460/#pair=123456";
 

@@ -55,6 +55,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.eclipse.jetty.websocket.api.Session;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -119,6 +120,7 @@ class HandshakeAuthTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"no key", "forged key", "revoked key", "loopback key on the network address",
         "network key on loopback", "key under the cookie name of another port"})
+    @Tag("DEV-2")
     void aHandshakeWithoutAKeyThatWorksHereIsUnauthorized(String presented) throws Exception {
         String loopbackCookie = loopbackCookieName();
         String networkCookie = networkCookieName();
@@ -147,6 +149,7 @@ class HandshakeAuthTest {
     }
 
     @Test
+    @Tag("DEV-2")
     void aKeyPairedOnLoopbackOpensTheConversationAndRecordsTheLogin() throws Exception {
         try (Socket socket = new Socket("127.0.0.1", server.address().getPort())) {
             String status = handshake(socket, server.address().getAuthority(), "http://",

@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -22,6 +23,7 @@ class InstanceLockTest {
     Path temp;
 
     @Test
+    @Tag("FILE-4")
     void createsTheRuntimeDirectory0700AndTheLockFile0600() throws Exception {
         Path runtime = temp.resolve("run/crawdad");
 
@@ -34,6 +36,7 @@ class InstanceLockTest {
     }
 
     @Test
+    @Tag("CMD-7")
     void aSecondLockInTheSameProcessIsRefusedUntilTheFirstIsReleased() throws Exception {
         InstanceLock first = InstanceLock.acquire(temp);
 
@@ -52,6 +55,8 @@ class InstanceLockTest {
     }
 
     @Test
+    @Tag("CMD-7")
+    @Tag("CMD-8")
     void aLockHeldByAnotherProcessIsRefusedAndFreedWhenItExits() throws Exception {
         // Another JVM takes the lock and holds it until its standard input closes.
         Path java = Path.of(System.getProperty("java.home"), "bin", "java");

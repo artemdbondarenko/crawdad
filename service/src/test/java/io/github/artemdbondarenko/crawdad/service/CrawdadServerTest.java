@@ -706,6 +706,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("FILE-3")
+    @Tag("DEV-10")
     void theServiceKeepsItsDevicesInItsDataDirectory() throws Exception {
         String key = DeviceRegistry.open(data(), Clock.systemUTC()).add("phone", Listener.LOOPBACK).key();
 

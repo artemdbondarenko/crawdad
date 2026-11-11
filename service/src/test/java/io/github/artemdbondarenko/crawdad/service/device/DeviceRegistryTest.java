@@ -77,6 +77,8 @@ class DeviceRegistryTest {
 
     @Test
     @Tag("KEY-8")
+    @Tag("PAIRCMD-7")
+    @Tag("DEV-9")
     void repeatedNamesGetSuffixesAndARevokedNameIsFreeAgain() throws IOException {
         assertThat(registry.add("tablet", Listener.LOOPBACK).device().name()).isEqualTo("tablet");
         assertThat(registry.add("tablet", Listener.NETWORK).device().name()).isEqualTo("tablet-2");
@@ -144,6 +146,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-9")
     void aRevokedKeyDoesNotPassAndItsHashIsErased() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofHours(1));
@@ -160,6 +163,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-2")
     void recordingALoginUpdatesOnlyTheLoginFields() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofMinutes(5));
@@ -175,6 +179,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-9")
     void recordingALoginDoesNotBringARevokedDeviceBack() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         registry.revoke("phone", connections);
@@ -195,6 +200,8 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-1")
+    @Tag("DEV-3")
     void theListHidesRevokedDevicesUnlessAllAreAsked() throws IOException {
         registry.add("laptop", Listener.LOOPBACK);
         clock.advance(Duration.ofMinutes(1));
@@ -209,6 +216,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void revokingAnUnknownNameListsTheActiveDevices() throws IOException {
         registry.add("laptop", Listener.LOOPBACK);
         registry.add("phone", Listener.NETWORK);
@@ -221,6 +229,19 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-6")
+    @Tag("DEV-7")
+    void namesAreComparedWithCase() throws IOException {
+        registry.add("tablet", Listener.NETWORK);
+
+        RevokeResult result = registry.revoke("Tablet", connections);
+
+        assertThat(result).isEqualTo(new RevokeResult.NotFound(List.of("tablet")));
+        assertThat(registry.devices(false)).extracting(Device::name).containsExactly("tablet");
+    }
+
+    @Test
+    @Tag("DEV-7")
     void revokingARevokedNameGivesTheDateOfRevocation() throws IOException {
         registry.add("phone", Listener.NETWORK);
         registry.revoke("phone", connections);
@@ -235,6 +256,8 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-6")
+    @Tag("DEV-9")
     void revokingANameThatIsActiveAgainRevokesTheActiveDevice() throws IOException {
         registry.add("phone", Listener.NETWORK);
         registry.revoke("phone", connections);
@@ -249,6 +272,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-6")
     void revokingClosesEveryConnectionOfTheDeviceOnceTheRevocationIsSaved() throws IOException {
         NewDevice laptop = registry.add("laptop", Listener.LOOPBACK);
         NewDevice phone = registry.add("phone", Listener.NETWORK);
@@ -277,6 +301,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-8")
     void aRevocationThatCannotBeSavedClosesNothingAndKeepsTheDevice() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         List<String> closes = new ArrayList<>();
@@ -311,6 +336,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("DEV-10")
     void everythingIsInPlaceAfterReloadingFromTheFile() throws IOException {
         NewDevice laptop = registry.add("laptop", Listener.LOOPBACK);
         NewDevice phone = registry.add("phone", Listener.NETWORK);
@@ -337,6 +363,7 @@ class DeviceRegistryTest {
 
     @Test
     @Tag("KEY-3")
+    @Tag("FILE-4")
     void theFileKeepsOnlyTheHashOfTheKeyAndIsPrivate() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         Path file = directory.data().resolve("devices.json");

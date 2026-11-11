@@ -97,6 +97,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("CMD-1")
     void onlyTheFirstWordPicksACommandAndEverythingElseStartsTheService() {
         for (String command : List.of("pair", "devices", "revoke", "tls")) {
             assertThat(Cli.handles(new String[] {command})).as(command).isTrue();
@@ -107,6 +108,8 @@ class CliTest {
     }
 
     @Test
+    @Tag("CMD-2")
+    @Tag("CMD-3")
     void withoutTheServiceACommandSaysHowToStartItAndFails() {
         DataDirectory nowhere = new DataDirectory(temp.resolve("other-data"), temp.resolve("other-run"));
 
@@ -117,6 +120,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("CMD-3")
     void aSocketLeftByAServiceThatIsGoneCountsAsNotRunning() throws Exception {
         socket.close();
         // A crashed service leaves its bound socket file behind; nothing accepts on it.
@@ -132,6 +136,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("CMD-3")
     void aSocketThisUserMayNotOpenCountsAsNotRunning() {
         try {
             setPermissions(data.runtime(), "---------");
@@ -145,6 +150,9 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-1")
+    @Tag("PAIRCMD-2")
+    @Tag("PAIRCMD-3")
     void pairWithoutANetworkAddressPrintsTheLinkForThisMachineAndNoQrAndEndsWithTheDevice() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair", "--name", "phone");
         String code = awaitCode();
@@ -165,6 +173,8 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-1")
+    @Tag("PAIRCMD-3")
     void withANetworkAddressPairPrintsAQrCodeOfTheNetworkLink() throws Exception {
         socket.close();
         socket = ControlSocket.start(data.runtime(), codes, devices, connections,
@@ -188,6 +198,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aCodeNobodyEntersInTimeEndsTheCommandAsExpired() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
         String code = awaitCode();
@@ -200,6 +211,8 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
+    @Tag("PAIRCMD-5")
     void aBurnedCodeEndsTheCommandWithTheSourcesAndIsNotRepeatedByTheNextPair() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
         String wrong = awaitCode().equals("000000") ? "000001" : "000000";
@@ -219,6 +232,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-5")
     void aCodeThatBurnedWhileNobodyWaitedIsReportedByTheNextPair() throws Exception {
         String burned = codes.issue(null).code();
         for (int i = 0; i < PairingCodes.ATTEMPTS; i++) {
@@ -235,6 +249,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aDeviceTheServiceCouldNotSaveEndsTheCommandAsFailed() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
 
@@ -282,6 +297,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-8")
     void theDeviceThatPairedIsPrintedWithoutTerminalControlCharacters() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
 
@@ -296,6 +312,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aDeviceThatPairedWithoutAUserAgentHasAnUnknownBrowser() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
 
@@ -316,6 +333,10 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-1")
+    @Tag("DEV-3")
+    @Tag("DEV-4")
+    @Tag("DEV-5")
     void devicesPrintsATableOfTheActiveOnesAndWithAllTheRevokedToo() throws Exception {
         devices.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofMinutes(1));
@@ -343,6 +364,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-1")
     void devicesWithoutAnyDeviceSaysSo() {
         assertThat(run("devices", "--all")).isEqualTo(0);
 
@@ -350,6 +372,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-6")
     void revokeOfAnActiveDeviceSucceeds() throws Exception {
         devices.add("phone", Listener.LOOPBACK);
 
@@ -360,6 +383,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void revokeOfAnUnknownNameFailsWithTheActiveDevices() throws Exception {
         assertThat(run("revoke", "watch")).isEqualTo(1);
         assertThat(err()).isEqualTo(lines("No active device named watch. There are no active devices."));
@@ -372,6 +396,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void revokeOfARevokedDeviceFailsWithTheDate() throws Exception {
         devices.add("phone", Listener.LOOPBACK);
         clock.advance(Duration.ofHours(1));
@@ -383,6 +408,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("DEV-8")
     void aRevocationTheServiceCouldNotSaveFails() throws Exception {
         devices.add("phone", Listener.LOOPBACK);
         // The registry writes next to devices.json; without its directory every write fails.
@@ -410,6 +436,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("CMD-1")
     void wrongArgumentsPrintTheUsageAndExitWithTwo() {
         List<List<String>> wrong = List.of(
                 List.of("pair", "--bogus"),
@@ -442,6 +469,9 @@ class CliTest {
     }
 
     @Test
+    @Tag("CA-1")
+    @Tag("CA-2")
+    @Tag("CA-4")
     void exportCaPrintsTheRootAsPemAndItsFingerprintWithoutTheService() throws Exception {
         String fingerprint = LocalCa.forThisMachine(data).issue("10.1.2.3").rootFingerprint();
         socket.close();
@@ -455,6 +485,75 @@ class CliTest {
     }
 
     @Test
+    @Tag("CA-3")
+    void exportCaNeverReadsThePrivateKeyOfTheRoot() throws Exception {
+        LocalCa.forThisMachine(data).issue("10.1.2.3");
+        socket.close();
+        Path key = data.data().resolve(LocalCa.DIRECTORY).resolve(LocalCa.KEY_FILE);
+        setPermissions(key, "---------");
+        try {
+            assertThat(run("tls", "export-ca")).isEqualTo(0);
+        } finally {
+            setPermissions(key, "rw-------");
+        }
+
+        assertThat(out()).startsWith("-----BEGIN CERTIFICATE-----\n").doesNotContain("PRIVATE KEY");
+    }
+
+    @Test
+    @Tag("CA-4")
+    void exportCaPrintsAnExpiredRootAsItIs() throws Exception {
+        Path root = Files.createDirectories(data.data().resolve(LocalCa.DIRECTORY)).resolve(LocalCa.CERTIFICATE_FILE);
+        Files.writeString(root, ExpiredCertificate.pem());
+        socket.close();
+
+        assertThat(run("tls", "export-ca")).isEqualTo(0);
+
+        assertThat(out()).isEqualTo(Files.readString(root));
+        assertThat(err()).startsWith("SHA-256 fingerprint: ");
+    }
+
+    @Test
+    @Tag("PAIRCMD-4")
+    void ctrlCStopsTheWaitWithCode130AndTheCodeStaysValid() throws Exception {
+        // A real process, so that the signal and the exit code are the JVM's own.
+        Path home = temp.resolve("home");
+        DataDirectory xdg = new DataDirectory(home.resolve("data/crawdad"), home.resolve("run/crawdad"));
+        ControlSocket service = ControlSocket.start(xdg.runtime(), codes, devices, connections,
+                new ServiceUrls(LOOPBACK, Optional.empty()));
+        String java = ProcessHandle.current().info().command().orElseThrow();
+        ProcessBuilder command = new ProcessBuilder(java, "-cp", System.getProperty("java.class.path"),
+                "io.github.artemdbondarenko.crawdad.service.CrawdadService", "pair");
+        command.environment().put("HOME", home.toString());
+        command.environment().put("XDG_DATA_HOME", home.resolve("data").toString());
+        command.environment().put("XDG_RUNTIME_DIR", home.resolve("run").toString());
+        command.redirectErrorStream(true);
+        Process pair = command.start();
+        try {
+            BufferedReader output = new BufferedReader(new InputStreamReader(pair.getInputStream(),
+                    StandardCharsets.UTF_8));
+            String code = null;
+            for (String line = output.readLine(); line != null && !line.startsWith("Waiting"); line = output.readLine()) {
+                Matcher issued = CODE.matcher(line);
+                if (issued.find()) {
+                    code = issued.group(1);
+                }
+            }
+            assertThat(code).isNotNull();
+
+            assertThat(new ProcessBuilder("kill", "-INT", String.valueOf(pair.pid())).start().waitFor()).isZero();
+
+            assertThat(pair.waitFor(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(pair.exitValue()).isEqualTo(130);
+            assertThat(codes.attempt(code, PHONE)).isInstanceOf(Attempt.Accepted.class);
+        } finally {
+            pair.destroyForcibly();
+            service.close();
+        }
+    }
+
+    @Test
+    @Tag("CA-5")
     void exportCaOfADamagedRootFails() throws Exception {
         Path root = Files.createDirectories(data.data().resolve(LocalCa.DIRECTORY)).resolve(LocalCa.CERTIFICATE_FILE);
         Files.writeString(root, "not a certificate");
@@ -466,6 +565,7 @@ class CliTest {
     }
 
     @Test
+    @Tag("FILE-2")
     void theDataDirectoryIsFoundWithoutTheWarningOfTheService() {
         Logger directoryLog = Logger.getLogger(DataDirectory.class.getName());
         List<LogRecord> records = new CopyOnWriteArrayList<>();

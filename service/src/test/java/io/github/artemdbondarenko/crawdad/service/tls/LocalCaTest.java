@@ -180,6 +180,8 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("FILE-3")
+    @Tag("FILE-4")
     void keepsTheRootFilesPrivate() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
 
