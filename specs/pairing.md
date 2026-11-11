@@ -242,4 +242,3 @@ The `error` values are part of the contract. All bodies are JSON (`application/j
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `PAIR-8` | a body with fields besides `code`, or with `code` twice, is taken as a code, not counted as a wrong attempt | #32 |

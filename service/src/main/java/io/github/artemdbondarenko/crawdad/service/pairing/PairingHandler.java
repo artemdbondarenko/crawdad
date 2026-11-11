@@ -25,6 +25,7 @@ import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.eclipse.jetty.util.Promise;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -47,6 +48,7 @@ public final class PairingHandler extends Handler.Wrapper {
     private static final Pattern CODE = Pattern.compile("[0-9]{6}");
     private static final JsonMapper JSON = JsonMapper.builder()
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .build();
 
     /** A device and the key it presented, which renews its cookie. */
@@ -167,14 +169,21 @@ public final class PairingHandler extends Handler.Wrapper {
         }
     }
 
-    /** The code of a body {@code {"code":"123456"}}; null for anything else. */
+    /**
+     * The code of a body that is exactly {@code {"code":"123456"}}; null for anything else, also for other
+     * fields beside {@code code} or {@code code} twice ({@code PAIR-8}).
+     */
     private static String codeIn(byte[] body) {
-        JsonNode code;
+        JsonNode request;
         try {
-            code = JSON.readTree(body).get("code");
+            request = JSON.readTree(body);
         } catch (JacksonException e) {
             return null;
         }
+        if (request == null || !request.isObject() || request.size() != 1) {
+            return null;
+        }
+        JsonNode code = request.get("code");
         if (code == null || !code.isString() || !CODE.matcher(code.stringValue()).matches()) {
             return null;
         }
