@@ -110,8 +110,7 @@ public final class PairingHandler extends Handler.Wrapper {
         String host = request.getHeaders().get(HttpHeader.HOST);
         // A foreign page is refused before the code is looked at, so it cannot spend the owner's attempts.
         if (!site.guard().allows(origin, host)) {
-            // The aggregator escapes the whole message; escaping here too would double every backslash.
-            warnings.warn(address, "Pairing refused: Origin=" + origin + ", Host=" + host);
+            warnings.warn(address, "Pairing refused: Origin={0}, Host={1}", origin, host);
             json(response, callback, 403, Map.of("error", "forbidden"));
             return;
         }
@@ -199,7 +198,8 @@ public final class PairingHandler extends Handler.Wrapper {
         String origin = request.getHeaders().get(HttpHeader.ORIGIN);
         String host = request.getHeaders().get(HttpHeader.HOST);
         if (!site.guard().allowsWithoutOrigin(origin, host)) {
-            warnings.warn(Request.getRemoteAddr(request), "Device check refused: Origin=" + origin + ", Host=" + host);
+            warnings.warn(Request.getRemoteAddr(request), "Device check refused: Origin={0}, Host={1}", origin,
+                    host);
             json(response, callback, 403, Map.of("error", "forbidden"));
             return;
         }

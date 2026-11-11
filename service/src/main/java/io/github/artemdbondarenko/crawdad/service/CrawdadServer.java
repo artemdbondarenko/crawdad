@@ -394,8 +394,7 @@ public final class CrawdadServer {
         String origin = request.getHeaders().get(HttpHeader.ORIGIN);
         String host = request.getHeaders().get(HttpHeader.HOST);
         if (!site.guard().allows(origin, host)) {
-            // The aggregator escapes the whole message; escaping here too would double every backslash.
-            refusals.warn(address, "WebSocket refused: Origin=" + origin + ", Host=" + host);
+            refusals.warn(address, "WebSocket refused: Origin={0}, Host={1}", origin, host);
             Response.writeError(request, response, callback, 403);
             return null;
         }

@@ -134,6 +134,5 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `LOG-2` | an entry is cut to 200 characters as a whole, so a long `Origin` cuts the `Host` out of it; a renewed certificate that the TLS context refuses is reported without its file | #32 |
-| `LOG-3` | values are escaped and cut as one message, not each on its own; the cause of a failure is written as a stack trace, unescaped and over several lines | #32 |
-| `LOG-5` | warnings are aggregated per source, not per kind and source: within the minute after one warning, warnings of other kinds from the same source are only counted into it | #32 |
+| `LOG-2` | a renewed certificate that the TLS context refuses is reported without its file | #32 |
+| `LOG-3` | the cause of a failure is written as a stack trace, unescaped and over several lines | #32 |

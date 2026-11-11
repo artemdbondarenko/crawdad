@@ -138,6 +138,27 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("LOG-5")
+    void aRefusedOriginDoesNotHideTheWrongCodesThatFollowFromTheSameAddress() throws Exception {
+        Issued issued = codes.issue(null);
+        String wrong = issued.code().equals("000000") ? "111111" : "000000";
+        String host = authority(loopback);
+
+        for (int i = 0; i < 3; i++) {
+            Answer refused = send(loopback, "POST", "/pair", host, "https://evil.example", List.of(), body(wrong));
+            assertThat(refused.status()).isEqualTo(403);
+        }
+        assertThat(pair(loopback, wrong).status()).isEqualTo(401);
+        assertThat(send(loopback, "GET", "/device", "evil.example", null, List.of(), null).status()).isEqualTo(403);
+
+        // Each kind from the one address is written at once; only its own repeats are counted.
+        assertThat(messages(java.util.logging.Level.WARNING)).containsExactly(
+                "Pairing refused: Origin=https://evil.example, Host=" + host + " (from 127.0.0.1)",
+                "Wrong pairing code (from 127.0.0.1)",
+                "Device check refused: Origin=null, Host=evil.example (from 127.0.0.1)");
+    }
+
+    @Test
     void aWrongCodeIsRefusedAndWarnedAboutWithItsSourceButNotTheCode() throws Exception {
         Issued issued = codes.issue(null);
         String wrong = issued.code().equals("000000") ? "111111" : "000000";
