@@ -18,6 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,6 +28,8 @@ class DataDirectoryTest {
     Path temp;
 
     @Test
+    @Tag("FILE-1")
+    @Tag("FILE-2")
     void usesTheXdgDirectoriesWhenTheyAreSet() {
         DataDirectory directory = DataDirectory.fromEnvironment(Map.of(
                 "HOME", temp.resolve("home").toString(),
@@ -38,6 +41,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-1")
     void fallsBackToLocalShareWithoutXdgDataHome() {
         DataDirectory directory = DataDirectory.fromEnvironment(Map.of(
                 "HOME", temp.resolve("home").toString(),
@@ -47,6 +51,8 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-1")
+    @Tag("FILE-2")
     void ignoresEmptyAndRelativeXdgValuesAsTheSpecificationRequires() {
         DataDirectory empty = DataDirectory.fromEnvironment(Map.of(
                 "HOME", temp.resolve("home").toString(),
@@ -64,6 +70,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-2")
     void fallsBackToADirectoryInsideTheDataDirectoryWithoutXdgRuntimeDir() {
         List<LogRecord> logged = new CopyOnWriteArrayList<>();
         Handler collect = new Handler() {
@@ -96,6 +103,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-1")
     void refusesWithoutAHomeToFallBackTo() {
         assertThatThrownBy(() -> DataDirectory.fromEnvironment(Map.of()))
                 .isInstanceOf(IllegalStateException.class)
@@ -114,6 +122,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-4")
     void createsMissingDirectoriesForTheOwnerOnly() throws IOException {
         Path directory = temp.resolve("data/crawdad");
 
@@ -134,6 +143,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-4")
     void writesAFileThatIsOwnerOnlyFromTheMomentItIsCreated() throws IOException {
         Path file = temp.resolve("devices.json");
         // While the content is being written, the only file in the directory is the temporary one.
@@ -152,6 +162,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-5")
     void replacesAFileAtomicallyAndLeavesNoTemporaryFile() throws IOException {
         Path file = temp.resolve("devices.json");
         DataDirectory.writeAtomically(file, "old".getBytes(StandardCharsets.UTF_8));
@@ -169,6 +180,7 @@ class DataDirectoryTest {
     }
 
     @Test
+    @Tag("FILE-5")
     void keepsTheOldFileAndRemovesTheTemporaryOneWhenWritingFails() throws IOException {
         Path file = temp.resolve("devices.json");
         DataDirectory.writeAtomically(file, "old".getBytes(StandardCharsets.UTF_8));

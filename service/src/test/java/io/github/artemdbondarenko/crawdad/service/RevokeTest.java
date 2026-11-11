@@ -55,6 +55,7 @@ import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -114,6 +115,7 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("DEV-6")
     void revokingClosesEveryConnectionOfTheDeviceAndLeavesOtherDevicesWorking() throws Exception {
         // The laptop is open in two tabs, the phone in one; each has its conversation.
         Inbox firstTab = connect(laptopKey);
@@ -141,6 +143,8 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("DEV-6")
+    @Tag("DEV-9")
     void afterRevocationTheOldKeyIsUnauthorizedOnWsAndDevice() throws Exception {
         String cookie = cookieName() + "=" + laptopKey;
         // The key works before the revocation.
@@ -153,6 +157,7 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void anUnknownOrAlreadyRevokedNameClosesNothing() throws Exception {
         Inbox laptop = connect(laptopKey);
         String laptopSession = laptop.next().sessionId();
@@ -171,6 +176,7 @@ class RevokeTest {
     }
 
     @Test
+    @Tag("DEV-8")
     void aRevocationThatCannotBeSavedClosesNothingAndKeepsTheDevice() throws Exception {
         Inbox laptop = connect(laptopKey);
         String laptopSession = laptop.next().sessionId();

@@ -438,6 +438,7 @@ class PairingHandlerTest {
     @Tag("KEY-6")
     @Tag("KEY-8")
     @Tag("PAIR-12")
+    @Tag("DEV-2")
     void theDeviceAnswersWithItsNameAndRenewsTheSameCookie() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         String cookie = "crawdad_device_" + loopback.getLocalPort();
@@ -451,6 +452,8 @@ class PairingHandlerTest {
         assertThat(answer.header("cache-control")).containsExactly("no-store");
         assertThat(answer.header("set-cookie")).containsExactly(
                 cookie + "=" + key + "; Path=/; Max-Age=34560000; HttpOnly; SameSite=Strict");
+        // Only a handshake counts as a connection of the device (DEV-2).
+        assertThat(devices.devices(false).getFirst().lastSeen()).isNull();
     }
 
     @Test
@@ -590,11 +593,13 @@ class PairingHandlerTest {
         "SomeTool (Linux) | Browser on Linux",
         "'' | Browser"
     })
+    @Tag("PAIRCMD-6")
     void namesADeviceAfterItsBrowserAndSystem(String userAgent, String name) {
         assertThat(PairingHandler.nameFor(userAgent)).isEqualTo(name);
     }
 
     @Test
+    @Tag("PAIRCMD-6")
     void namesADeviceWithoutUserAgentBrowser() {
         assertThat(PairingHandler.nameFor(null)).isEqualTo("Browser");
     }

@@ -45,6 +45,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -108,6 +109,9 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("CMD-5")
+    @Tag("FILE-2")
+    @Tag("FILE-4")
     void theSocketIsOpenOnlyToItsOwnerInAPrivateDirectory() throws IOException {
         assertThat(socket.path()).isEqualTo(data.runtime().resolve("control.sock"));
         assertThat(PosixFilePermissions.toString(Files.getPosixFilePermissions(data.runtime())))
@@ -117,6 +121,9 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-1")
+    @Tag("PAIRCMD-2")
+    @Tag("PAIRCMD-6")
     void pairAnswersWithTheCodeAndThenWithTheDeviceThatUsedIt() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\",\"name\":\"phone\"}");
@@ -133,6 +140,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-6")
     void pairWithoutANameLeavesTheNameToTheBrowserAndReportsAMissingUserAgentAsNull() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\",\"name\":null}");
@@ -145,6 +153,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aNewerPairTellsTheWaitingOneItsCodeWasReplaced() throws Exception {
         Client first = connect();
         first.send("{\"op\":\"pair\"}");
@@ -162,6 +171,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aDeviceThatCouldNotBeSavedEndsThePairingAsFailed() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\"}");
@@ -173,6 +183,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void aCodeNobodyEntersInTimeEndsAsExpired() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\"}");
@@ -186,6 +197,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-3")
     void wrongAttemptsBurnTheCodeAndTheWaiterLearnsTheirSources() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\"}");
@@ -199,6 +211,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-4")
     void aClientThatLeavesStopsWaitingButTheCodeStaysValid() throws Exception {
         Client leaving = connect();
         leaving.send("{\"op\":\"pair\"}");
@@ -214,6 +227,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-5")
     void aCodeBurnedWhileNobodyWaitedIsReportedByTheNextPair() throws Exception {
         Client leaving = connect();
         leaving.send("{\"op\":\"pair\"}");
@@ -233,6 +247,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-5")
     void aBurnTheWaiterWasToldIsNotRepeatedByTheNextPair() throws Exception {
         Client waiting = connect();
         waiting.send("{\"op\":\"pair\"}");
@@ -252,6 +267,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-1")
     void withANetworkAddressTheFirstLineCarriesBothUrls() throws Exception {
         socket.close();
         socket = ControlSocket.start(data.runtime(), codes, devices, connections,
@@ -265,6 +281,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-7")
     void aNameMayHaveOneCharacter() throws Exception {
         Client client = connect();
         client.send("{\"op\":\"pair\",\"name\":\"p\"}");
@@ -275,6 +292,8 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-6")
+    @Tag("PAIRCMD-7")
     void theNameIsTrimmedAndMayHaveSixtyFourCharacters() throws Exception {
         String longest = "p".repeat(ControlSocket.MAX_NAME_LENGTH);
         Client client = connect();
@@ -286,6 +305,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("PAIRCMD-7")
     void anInvalidNameIssuesNoCode() throws Exception {
         Issued waiting = codes.issue("laptop");
         List<String> invalid = List.of(
@@ -383,6 +403,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("CMD-5")
     void anotherUserIsDisconnectedWithoutAnAnswerAndAWarning() throws Exception {
         socket.close();
         UserPrincipal mallory = () -> "mallory";
@@ -399,6 +420,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("CMD-5")
     void aPeerWhoseUserCannotBeReadIsDisconnectedToo() throws Exception {
         socket.close();
         socket = ControlSocket.start(data.runtime(), codes, devices, connections, loopbackOnly(),
@@ -415,6 +437,8 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("DEV-1")
+    @Tag("DEV-3")
     void devicesListsTheActiveOnesAndWithAllTheRevokedToo() throws Exception {
         devices.add("phone", Listener.NETWORK);
         clock.advance(Duration.ofMinutes(1));
@@ -438,6 +462,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("DEV-6")
     void revokeClosesTheConnectionsOfTheDevice() throws Exception {
         String phone = devices.add("phone", Listener.LOOPBACK).device().id();
         List<String> closed = new CopyOnWriteArrayList<>();
@@ -450,6 +475,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void revokeOfAnUnknownNameListsTheActiveDevices() throws Exception {
         devices.add("phone", Listener.LOOPBACK);
         devices.add("laptop", Listener.LOOPBACK);
@@ -459,6 +485,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("DEV-7")
     void revokeOfARevokedDeviceTellsWhen() throws Exception {
         devices.add("phone", Listener.LOOPBACK);
         clock.advance(Duration.ofHours(1));
@@ -469,6 +496,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("DEV-8")
     void aRevocationThatCannotBeSavedIsAServerErrorAndLoggedWithoutTheKey() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         // The registry writes next to devices.json; without its directory every write fails.
@@ -485,6 +513,7 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("CMD-8")
     void aSocketLeftByAProcessThatIsGoneIsReplaced() throws Exception {
         socket.close();
         // A crashed service leaves its socket file; nothing listens on it any more.
@@ -496,6 +525,8 @@ class ControlSocketTest {
     }
 
     @Test
+    @Tag("CMD-8")
+    @Tag("PAIRCMD-3")
     void closingDeletesTheSocketAndEndsAWaitingPair() throws Exception {
         Client waiting = connect();
         waiting.send("{\"op\":\"pair\"}");

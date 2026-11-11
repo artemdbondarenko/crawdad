@@ -78,6 +78,8 @@ class CrawdadServiceTest {
 
     @Test
     @Tag("PAIR-6")
+    @Tag("CMD-2")
+    @Tag("PAIRCMD-1")
     void theServicePairsADeviceThroughItsControlSocket() throws Exception {
         server = run("--port", "0");
         Path socket = data().runtime().resolve(ControlSocket.FILE_NAME);
@@ -140,6 +142,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("CMD-7")
     void aSecondServiceOfTheSameUserRefusesToStartAndLeavesTheFirstOneAlone() throws Exception {
         server = run("--port", "0");
 
@@ -151,6 +154,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("CMD-7")
     void theLockIsTakenBeforeTheRegistryAndTheOwnRootAreOpened() throws Exception {
         try (InstanceLock other = InstanceLock.acquire(data().runtime())) {
             assertThatThrownBy(() -> run("--host", "10.1.2.3", "--port", "0"))
@@ -161,6 +165,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("CMD-8")
     void stoppingDeletesTheSocketAndReleasesTheLockSoTheServiceCanStartAgain() throws Exception {
         server = run("--port", "0");
         Path socket = data().runtime().resolve(ControlSocket.FILE_NAME);
@@ -206,6 +211,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("PAIRCMD-1")
     void withAHostTheFirstLineOfPairCarriesTheNetworkAddressToo() throws Exception {
         // The record takes 127.0.0.2, which the options refuse, so that the test needs no private interface.
         server = CrawdadService.run(new ServiceConfig(NETWORK_HOST, 0), Optional.of(certificate()), data(),
@@ -267,6 +273,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("CMD-3")
     void theStartHintNamesThisJar() {
         assertThat(CrawdadService.startCommand()).startsWith("java -jar /");
     }
