@@ -459,6 +459,3 @@ both ends ship in the same program.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `CMD-4` | `crawdad pair` whose request gets no answer says that the service stopped before the code was used, and does not point at the service log | #32 |
-| `PAIRCMD-7` | the message for a refused name mentions control characters only | #32 |
-| `CA-5` | without a root the command says to start the service with `--host`, but not without certificate files | #32 |
