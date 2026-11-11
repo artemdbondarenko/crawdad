@@ -16,7 +16,6 @@ import io.github.artemdbondarenko.crawdad.service.tls.CertificateWatcher;
 import io.github.artemdbondarenko.crawdad.service.tls.LocalCa;
 import io.github.artemdbondarenko.crawdad.service.tls.LocalCa.UnusableRootException;
 import io.github.artemdbondarenko.crawdad.service.tls.TlsMaterial.UnusableFileException;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -100,9 +99,10 @@ public final class CrawdadService {
     }
 
     /**
-     * Takes the instance lock before anything in {@code data} is opened, then starts the server and the
-     * control socket on the same codes, devices and connections. The socket goes before the lock when the
-     * server stops; a socket that cannot start stops the server and fails the start.
+     * Takes the instance lock before anything in {@code data} is opened, then opens the control socket before
+     * the server listens on any address, so a socket that cannot be opened fails the start with nothing listened
+     * on ({@code CMD-6}). The socket answers once the server has started, before the addresses are printed. It
+     * goes before the lock when the server stops.
      */
     private static CrawdadServer run(ServiceConfig config, CertificateSource certificateSource, DataDirectory data,
             PrintStream out) throws Exception {
@@ -114,18 +114,17 @@ public final class CrawdadService {
             DeviceRegistry devices = DeviceRegistry.open(data, Clock.systemUTC());
             ConnectionRegistry connections = new ConnectionRegistry();
             PairingCodes codes = new PairingCodes();
-            server = CrawdadServer.start(config, CLIENT_FILES, new FakeAgentAdapter(), certificate, devices,
-                    connections, codes);
-            ControlSocket control;
+            ControlSocket control = ControlSocket.open(data.runtime(), codes, devices, connections);
             try {
-                control = ControlSocket.start(data.runtime(), codes, devices, connections,
-                        new ControlSocket.ServiceUrls(server.address(), server.networkAddress()));
-            } catch (IOException | RuntimeException e) {
-                server.stop();
+                server = CrawdadServer.start(config, CLIENT_FILES, new FakeAgentAdapter(), certificate, devices,
+                        connections, codes);
+            } catch (Exception e) {
+                control.close();
                 throw e;
             }
             server.whenStopped(control::close);
             server.whenStopped(lock::close);
+            control.serve(new ControlSocket.ServiceUrls(server.address(), server.networkAddress()));
         } catch (Exception e) {
             lock.close();
             throw e;

@@ -10,6 +10,7 @@ import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes;
 import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes.Issued;
 import io.github.artemdbondarenko.crawdad.service.pairing.PairingOutcome;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
+import io.github.artemdbondarenko.crawdad.service.storage.Umask;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.System.Logger;
@@ -24,7 +25,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.time.Duration;
 import java.time.Instant;
@@ -94,7 +94,8 @@ public final class ControlSocket implements Closeable {
     private final PairingCodes codes;
     private final DeviceRegistry devices;
     private final ConnectionRegistry connections;
-    private final ServiceUrls urls;
+    /** Null until {@link #serve}. */
+    private volatile ServiceUrls urls;
     private final Duration requestTimeout;
     private final PeerSource peers;
     private final WarningAggregator refusals = new WarningAggregator(LOG);
@@ -103,15 +104,13 @@ public final class ControlSocket implements Closeable {
     private volatile boolean closed;
 
     private ControlSocket(Path path, ServerSocketChannel server, UserPrincipal owner, PairingCodes codes,
-            DeviceRegistry devices, ConnectionRegistry connections, ServiceUrls urls, Duration requestTimeout,
-            PeerSource peers) {
+            DeviceRegistry devices, ConnectionRegistry connections, Duration requestTimeout, PeerSource peers) {
         this.path = path;
         this.server = server;
         this.owner = owner;
         this.codes = codes;
         this.devices = devices;
         this.connections = connections;
-        this.urls = urls;
         this.requestTimeout = requestTimeout;
         this.peers = peers;
         this.deadlines = new ScheduledThreadPoolExecutor(1,
@@ -120,44 +119,69 @@ public final class ControlSocket implements Closeable {
     }
 
     /**
-     * Listens on {@code control.sock} in {@code runtimeDirectory}, creating the directory 0700. The caller
-     * holds the {@link io.github.artemdbondarenko.crawdad.service.storage.InstanceLock InstanceLock}, so a
-     * socket file already there is a leftover of a process that is gone and is replaced without a probe.
-     * {@code urls} go into the first answer line of every {@code pair}.
+     * Opens {@code control.sock} in {@code runtimeDirectory}, creating the directory 0700, and answers commands
+     * at once with {@code urls}; for tests, which need no addresses first. The service uses {@link #open} and
+     * {@link #serve}.
      */
     public static ControlSocket start(Path runtimeDirectory, PairingCodes codes, DeviceRegistry devices,
             ConnectionRegistry connections, ServiceUrls urls) throws IOException {
-        return start(runtimeDirectory, codes, devices, connections, urls, REQUEST_TIMEOUT, KERNEL);
+        ControlSocket socket = open(runtimeDirectory, codes, devices, connections);
+        socket.serve(urls);
+        return socket;
     }
 
     static ControlSocket start(Path runtimeDirectory, PairingCodes codes, DeviceRegistry devices,
             ConnectionRegistry connections, ServiceUrls urls, Duration requestTimeout, PeerSource peers)
             throws IOException {
+        ControlSocket socket = open(runtimeDirectory, codes, devices, connections, requestTimeout, peers);
+        socket.serve(urls);
+        return socket;
+    }
+
+    /**
+     * Binds {@code control.sock} in {@code runtimeDirectory}, creating the directory 0700, but answers nothing
+     * until {@link #serve}: the service opens it before it listens on any address, so a socket that cannot be
+     * opened stops the start with nothing listened on ({@code CMD-6}). The socket is 0600 from the moment it
+     * exists ({@code FILE-4}). The caller holds the
+     * {@link io.github.artemdbondarenko.crawdad.service.storage.InstanceLock InstanceLock}, so a socket file
+     * already there is a leftover of a process that is gone and is replaced without a probe ({@code CMD-8}).
+     */
+    public static ControlSocket open(Path runtimeDirectory, PairingCodes codes, DeviceRegistry devices,
+            ConnectionRegistry connections) throws IOException {
+        return open(runtimeDirectory, codes, devices, connections, REQUEST_TIMEOUT, KERNEL);
+    }
+
+    static ControlSocket open(Path runtimeDirectory, PairingCodes codes, DeviceRegistry devices,
+            ConnectionRegistry connections, Duration requestTimeout, PeerSource peers) throws IOException {
         Objects.requireNonNull(codes, "codes");
         Objects.requireNonNull(devices, "devices");
         Objects.requireNonNull(connections, "connections");
-        Objects.requireNonNull(urls, "urls");
         Objects.requireNonNull(requestTimeout, "requestTimeout");
         Objects.requireNonNull(peers, "peers");
         Path path = DataDirectory.createPrivateDirectory(runtimeDirectory).resolve(FILE_NAME);
         Files.deleteIfExists(path);
         ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
-        ControlSocket socket;
         try {
-            server.bind(UnixDomainSocketAddress.of(path));
-            // Bound with the umask's mode; the 0700 directory keeps other users out until this narrows it.
-            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
+            // bind creates the socket with the mode the mask leaves; no chmod afterwards, no moment wider than 0600.
+            Umask.during(Umask.OWNER_READ_WRITE, () -> server.bind(UnixDomainSocketAddress.of(path)));
             // The socket file was just created by this process, so its owner is the user the service runs as.
             UserPrincipal owner = Files.getOwner(path);
-            socket = new ControlSocket(path, server, owner, codes, devices, connections, urls, requestTimeout,
-                    peers);
+            return new ControlSocket(path, server, owner, codes, devices, connections, requestTimeout, peers);
         } catch (IOException | RuntimeException e) {
             server.close();
             Files.deleteIfExists(path);
             throw e;
         }
-        Thread.ofVirtual().name("crawdad-control-accept").start(socket::accept);
-        return socket;
+    }
+
+    /** Starts answering commands; {@code urls} go into the first answer line of every {@code pair}. */
+    public void serve(ServiceUrls urls) {
+        Objects.requireNonNull(urls, "urls");
+        if (this.urls != null) {
+            throw new IllegalStateException("The control socket is served already");
+        }
+        this.urls = urls;
+        Thread.ofVirtual().name("crawdad-control-accept").start(this::accept);
     }
 
     /** The socket file. */
