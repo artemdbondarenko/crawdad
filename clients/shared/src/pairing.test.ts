@@ -14,7 +14,7 @@ function fakePair(answer: number | "offline") {
 }
 
 describe("pairDevice", () => {
-  it("posts the code as JSON to the same origin, with cookies and without the cache", async () => {
+  it("PAIR-6: posts the code as JSON to the same origin, with cookies and without the cache", async () => {
     const service = fakePair(204);
 
     await pairDevice("123456", service.fetch);
@@ -33,25 +33,25 @@ describe("pairDevice", () => {
     ]);
   });
 
-  it("succeeds on 204", async () => {
+  it("SCREEN-4: succeeds on 204", async () => {
     expect(await pairDevice("123456", fakePair(204).fetch)).toEqual({ paired: true });
   });
 
-  it("says the code is invalid or expired on 401", async () => {
+  it("SCREEN-4: says the code is invalid or expired on 401", async () => {
     expect(await pairDevice("000000", fakePair(401).fetch)).toEqual({
       paired: false,
       error: "Invalid or expired code",
     });
   });
 
-  it.each([403, 400, 500, 200])("says the service refused on %i", async (status) => {
+  it.each([403, 400, 500, 200])("SCREEN-5: says the service refused on %i", async (status) => {
     expect(await pairDevice("123456", fakePair(status).fetch)).toEqual({
       paired: false,
       error: "Pairing was refused by the service",
     });
   });
 
-  it("says the service cannot be reached when the request fails", async () => {
+  it("SCREEN-5: says the service cannot be reached when the request fails", async () => {
     expect(await pairDevice("123456", fakePair("offline").fetch)).toEqual({
       paired: false,
       error: "Could not reach the service",
@@ -60,18 +60,18 @@ describe("pairDevice", () => {
 });
 
 describe("pairingCodeFromHash", () => {
-  it("reads a six-digit code from a pairing link", () => {
+  it("SCREEN-2: reads a six-digit code from a pairing link", () => {
     expect(pairingCodeFromHash("#pair=123456")).toBe("123456");
   });
 
-  it("gives an empty code for a pairing link whose code is not six digits", () => {
+  it("SCREEN-2: gives an empty code for a pairing link whose code is not six digits", () => {
     expect(pairingCodeFromHash("#pair=")).toBe("");
     expect(pairingCodeFromHash("#pair=12345")).toBe("");
     expect(pairingCodeFromHash("#pair=1234567")).toBe("");
     expect(pairingCodeFromHash("#pair=<b>x</b>")).toBe("");
   });
 
-  it("gives nothing when the fragment is not a pairing link", () => {
+  it("SCREEN-2: gives nothing when the fragment is not a pairing link", () => {
     expect(pairingCodeFromHash("")).toBeUndefined();
     expect(pairingCodeFromHash("#")).toBeUndefined();
     expect(pairingCodeFromHash("#section")).toBeUndefined();

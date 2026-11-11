@@ -289,7 +289,7 @@ describe("render", () => {
 });
 
 describe("pairing screen", () => {
-  it("is shown instead of the chat while the device is not paired", () => {
+  it("SCREEN-1: is shown instead of the chat while the device is not paired", () => {
     expect(pairingForm().hidden).toBe(true);
     expect(chatForm().hidden).toBe(false);
 
@@ -311,9 +311,10 @@ describe("pairing screen", () => {
     expect(status().textContent).toBe("This device was unpaired");
   });
 
-  it("fills the code from a pairing link and removes it from the address, sending nothing", () => {
+  it("SCREEN-2, SCREEN-3: fills the code from a pairing link and removes it from the address, sending nothing", () => {
     // The owner opens the link from `crawdad pair`, with a path and a query to keep.
     history.replaceState(null, "", "/chat?x=1#pair=123456");
+    const entries = history.length;
     mount();
     connection.change({ state: "unpaired" });
 
@@ -322,12 +323,14 @@ describe("pairing screen", () => {
     expect(location.hash).toBe("");
     expect(location.pathname).toBe("/chat");
     expect(location.search).toBe("?x=1");
+    // The address is replaced, not pushed: Back does not bring the code back.
+    expect(history.length).toBe(entries);
 
     // Nothing goes to the service until the owner presses the button.
     expect(pairing.codes).toEqual([]);
   });
 
-  it("leaves the address alone when it is not a pairing link", () => {
+  it("SCREEN-2: leaves the address alone when it is not a pairing link", () => {
     history.replaceState(null, "", "/chat#section");
     mount();
 
@@ -335,7 +338,7 @@ describe("pairing screen", () => {
     expect(location.hash).toBe("#section");
   });
 
-  it("pairs on the button and starts the connection, then the chat returns", async () => {
+  it("SCREEN-3, SCREEN-4: pairs on the button and starts the connection, then the chat returns", async () => {
     history.replaceState(null, "", "/#pair=123456");
     mount();
     connection.change({ state: "unpaired" });
@@ -358,7 +361,7 @@ describe("pairing screen", () => {
     expect(input().disabled).toBe(false);
   });
 
-  it("says the code is invalid or expired on 401 and lets the owner try again", async () => {
+  it("SCREEN-4: says the code is invalid or expired on 401 and lets the owner try again", async () => {
     connection.change({ state: "unpaired" });
     codeField().value = "000000";
 
@@ -371,7 +374,7 @@ describe("pairing screen", () => {
     expect(codeField().value).toBe("000000");
   });
 
-  it("says when the service refuses or cannot be reached", async () => {
+  it("SCREEN-5: says when the service refuses or cannot be reached", async () => {
     connection.change({ state: "unpaired" });
     codeField().value = "123456";
 
@@ -385,7 +388,7 @@ describe("pairing screen", () => {
     expect(connection.started).toBe(0);
   });
 
-  it("asks for the code instead of sending an empty one", () => {
+  it("SCREEN-3: asks for the code instead of sending an empty one", () => {
     connection.change({ state: "unpaired" });
     codeField().value = "  ";
 
