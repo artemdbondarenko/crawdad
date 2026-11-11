@@ -319,6 +319,5 @@ The exact format of each message is the JSON Schema
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
 | `MSG-12`, `MSG-13` | no pings; a connection with no messages for 30 seconds is closed with `1001` | #17 |
-| `UI-1` | on `403` from `GET /device` the client tries again, as with a service it cannot reach, and does not say that the page must be opened at the printed address | #32 |
 | `UI-9` | an answer cut by a lost connection is not marked | #32 |
 | `UI-10` | after connecting again the client says nothing about the new session | #32 |

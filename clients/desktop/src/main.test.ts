@@ -139,6 +139,17 @@ describe("render", () => {
     expect(input().disabled).toBe(true);
   });
 
+  it("UI-1: says that the page must be opened at the printed address, and keeps input disabled", () => {
+    connection.change({ state: "wrong_address", canSend: false });
+
+    expect(status().dataset["state"]).toBe("wrong_address");
+    expect(status().textContent).toBe(
+      "Open this page at the address Crawdad prints when it starts",
+    );
+    expect(input().disabled).toBe(true);
+    expect(pairingForm().hidden).toBe(true);
+  });
+
   it("keeps the input disabled until the conversation can take a text", () => {
     expect(input().disabled).toBe(true);
     expect(button().disabled).toBe(true);
