@@ -6,7 +6,7 @@
 > not connected yet.
 >
 > Pairing, device keys and TLS required by [ADR-0002](docs/adr/0002-service-and-thin-clients.md)
-> are implemented as a proof of concept; their specification is being written. See
+> are implemented as the [specification](specs/) describes them. See
 > [development](docs/development.md#run-the-service) and [remote access](docs/remote-access.md).
 
 ## The problem
@@ -73,7 +73,8 @@ The minimum supported version of Claude Code will be stated here once there is s
 - **Architecture decisions** are recorded as ADRs in [`docs/adr/`](docs/adr/). The ground rules
   for working with Claude Code are in [ADR-0001](docs/adr/0001-legal-ground-rules.md).
 - **Every change goes through a pull request.** No direct commits to `main`.
-- **Tests are part of done.** A requirement is not implemented until a test checks it. Unit test
+- **Tests are part of done.** A requirement is not implemented until a test checks it, and the test
+  names the requirement ([development](docs/development.md#tests-and-requirements)). Unit test
   coverage is kept at around 80% or higher.
 - **Only permissively licensed dependencies** (MIT, BSD, Apache-2.0 and similar).
 
