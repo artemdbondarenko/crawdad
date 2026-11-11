@@ -47,6 +47,7 @@ import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralSubtree;
 import org.bouncycastle.asn1.x509.NameConstraints;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -64,6 +65,9 @@ class LocalCaTest {
     private final Map<String, InetAddress[]> dns = new LinkedHashMap<>();
 
     @Test
+    @Tag("TLS-7")
+    @Tag("TLS-8")
+    @Tag("TLS-12")
     void createsAConstrainedRootOnFirstCall() throws Exception {
         LocalCa.ServerCertificate issued = ca(MACHINE, NOW).issue("10.1.2.3");
 
@@ -78,6 +82,7 @@ class LocalCaTest {
         assertThat(root.getPublicKey()).isInstanceOf(ECPublicKey.class);
         assertThat(((ECPublicKey) root.getPublicKey()).getParams().getCurve().getField().getFieldSize())
                 .isEqualTo(256);
+        assertThat(root.getSigAlgName()).isEqualTo("SHA256withECDSA");
         assertThat(root.getNotAfter().toInstant())
                 .isEqualTo(ZonedDateTime.ofInstant(root.getNotBefore().toInstant(), ZoneOffset.UTC)
                         .plusYears(3).toInstant());
@@ -88,6 +93,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-8")
     void permitsTheHostNameInTheRootWhenHostIsGivenByName() throws Exception {
         dns.put("laptop.example.ts.net", new InetAddress[] {InetAddress.getByName("100.101.102.103")});
 
@@ -97,12 +103,21 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-9")
+    @Tag("TLS-13")
     void issuesAServerCertificateForTheHostAddressAndTheMachineName() throws Exception {
         LocalCa.ServerCertificate issued = ca(MACHINE, NOW).issue("192.168.0.6");
 
         X509Certificate server = issued.chain().getFirst();
         assertThat(server.getBasicConstraints()).isEqualTo(-1);
+        assertThat(server.getCriticalExtensionOIDs())
+                .contains(Extension.basicConstraints.getId(), Extension.keyUsage.getId());
+        // keyUsage bit 0 = digitalSignature, and nothing else.
+        assertThat(server.getKeyUsage()).containsExactly(true, false, false, false, false, false, false, false, false);
         assertThat(server.getExtendedKeyUsage()).containsExactly(SERVER_AUTH);
+        assertThat(server.getSigAlgName()).isEqualTo("SHA256withECDSA");
+        assertThat(((ECPublicKey) server.getPublicKey()).getParams().getCurve().getField().getFieldSize())
+                .isEqualTo(256);
         assertThat(subjectNames(server)).containsExactlyInAnyOrder("ip:192.168.0.6", "dns:workstation");
         assertThat(server.getIssuerX500Principal()).isEqualTo(readRoot().getSubjectX500Principal());
         assertThat(Duration.between(server.getNotBefore().toInstant(), server.getNotAfter().toInstant()))
@@ -113,6 +128,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-9")
     void namesTheHostAndItsAddressWhenHostIsGivenByName() throws Exception {
         dns.put("laptop.example.ts.net", new InetAddress[] {
                 InetAddress.getByName("100.101.102.103"), InetAddress.getByName("fd7a:115c:a1e0::1")});
@@ -124,6 +140,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-9")
     void doesNotOutliveTheRoot() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Instant late = NOW.plus(Duration.ofDays(3 * 365 - 30));
@@ -134,6 +151,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-7")
     void reusesTheSameRootOnTheNextCall() throws Exception {
         LocalCa.ServerCertificate first = ca(MACHINE, NOW).issue("10.1.2.3");
         Snapshot before = snapshot();
@@ -149,6 +167,8 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-7")
+    @Tag("TLS-9")
     void issuesANewServerCertificateOfTheSameRootForANewHost() throws Exception {
         LocalCa.ServerCertificate first = ca(MACHINE, NOW).issue("10.1.2.3");
 
@@ -174,6 +194,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("NET-4")
     void reportsTheSha256FingerprintOfTheRoot() throws Exception {
         LocalCa.ServerCertificate issued = ca(MACHINE, NOW).issue("10.1.2.3");
 
@@ -182,6 +203,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-9")
     void buildsAChainThatTheJdkValidatorAccepts() throws Exception {
         dns.put("laptop.example.ts.net", new InetAddress[] {InetAddress.getByName("100.101.102.103")});
 
@@ -191,6 +213,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-8")
     void theJdkRejectsACertificateOutsideTheNameConstraints() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         X509Certificate root = readRoot();
@@ -209,6 +232,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAHostNameTheRootDoesNotCover() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         dns.put("other.example.ts.net", new InetAddress[] {InetAddress.getByName("100.101.102.103")});
@@ -222,6 +246,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAnAddressTheRootDoesNotCover() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         dns.put("workstation", new InetAddress[] {InetAddress.getByName("8.8.8.8")});
@@ -249,6 +274,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAMachineNameTheRootDoesNotCover() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Snapshot before = snapshot();
@@ -260,6 +286,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAnExpiredRoot() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Snapshot before = snapshot();
@@ -273,6 +300,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesACorruptCertificate() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Files.writeString(tls().resolve("ca.crt"), "-----BEGIN CERTIFICATE-----\nnot base64!\n-----END CERTIFICATE-----\n");
@@ -281,6 +309,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesACorruptKey() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         String key = Files.readString(tls().resolve("ca.key"));
@@ -296,6 +325,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAKeyThatDoesNotMatchTheCertificate() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Path otherData = temp.resolve("other");
@@ -308,6 +338,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesACertificateThatIsNotACertificateAuthority() throws Exception {
         LocalCa.ServerCertificate issued = ca(MACHINE, NOW).issue("10.1.2.3");
         Files.writeString(tls().resolve("ca.crt"), pem(issued.chain().getFirst()));
@@ -316,6 +347,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAHalfWrittenRoot() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Files.delete(tls().resolve("ca.crt"));
@@ -324,6 +356,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAKeyWithoutItsCertificate() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Files.delete(tls().resolve("ca.key"));
@@ -332,6 +365,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-10")
     void refusesAnUnreadableKey() throws Exception {
         ca(MACHINE, NOW).issue("10.1.2.3");
         Files.setPosixFilePermissions(tls().resolve("ca.key"), Set.of());
@@ -343,6 +377,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("TLS-7")
     void createsTheRootInAnEmptyTlsDirectory() throws Exception {
         Files.createDirectories(tls());
 
@@ -353,6 +388,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("NET-3")
     void refusesAHostThatDoesNotResolve() {
         assertThatThrownBy(() -> ca(MACHINE, NOW).issue("nowhere.example"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -360,6 +396,7 @@ class LocalCaTest {
     }
 
     @Test
+    @Tag("NET-3")
     void refusesAHostWithoutAnIpv4Address() throws Exception {
         dns.put("six.example", new InetAddress[] {InetAddress.getByName("fd7a:115c:a1e0::1")});
 

@@ -343,6 +343,11 @@ public final class CrawdadServer {
         return Optional.ofNullable(network).map(n -> guardFor(n.connector()).address());
     }
 
+    /** How long a connection to the network address may stay silent; none without {@code --host}. */
+    Optional<Duration> networkIdleTimeout() {
+        return Optional.ofNullable(network).map(n -> Duration.ofMillis(n.connector().getIdleTimeout()));
+    }
+
     /** The TLS context of the network address, for reloading a renewed certificate. */
     Optional<SslContextFactory.Server> networkTls() {
         return Optional.ofNullable(network).map(Network::tls);

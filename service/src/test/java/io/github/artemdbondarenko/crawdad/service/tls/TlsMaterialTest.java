@@ -37,6 +37,7 @@ import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -51,6 +52,8 @@ class TlsMaterialTest {
     Path temp;
 
     @Test
+    @Tag("TLS-2")
+    @Tag("TLS-4")
     void readsAMatchingPairAndNamesTheAddressAfterTheFirstDnsName() throws Exception {
         KeyPair pair = ecKeyPair();
         X509Certificate certificate = selfSigned(pair, List.of(ip("100.101.102.103"), dns(NODE), dns("other.ts.net")));
@@ -65,6 +68,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void readsAnEcKeyInSec1Form() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), sec1(pair));
@@ -75,6 +79,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void skipsEcParametersThatOpensslWritesBeforeTheKey() throws Exception {
         KeyPair pair = ecKeyPair();
         // DER of OID 1.2.840.10045.3.1.7 (P-256), as in the output of "openssl ecparam -genkey".
@@ -87,6 +92,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void readsAnRsaKeyInPkcs1Form() throws Exception {
         KeyPair pair = rsaKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs1(pair.getPrivate()));
@@ -99,6 +105,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void readsAnRsaKeyInPkcs8Form() throws Exception {
         KeyPair pair = rsaKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -107,6 +114,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-2")
     void keepsTheWholeChainInOrderAndPutsItIntoAKeyStore() throws Exception {
         KeyPair issuerPair = ecKeyPair();
         X509Certificate issuer = certificate(issuerPair.getPublic(), "CN=Test intermediate", issuerPair.getPrivate(),
@@ -126,6 +134,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-4")
     void namesTheAddressAfterTheFirstIpAddressWhenTheSanHasNoDnsName() throws Exception {
         KeyPair pair = ecKeyPair();
         X509Certificate certificate = selfSigned(pair, List.of(ip("100.101.102.103"), ip("10.1.2.3")));
@@ -136,6 +145,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateWithoutASubjectAlternativeName() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of())), pkcs8(pair.getPrivate()));
@@ -144,6 +154,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesASubjectAlternativeNameWithoutADnsNameOrAnIpAddress() throws Exception {
         KeyPair pair = ecKeyPair();
         GeneralName uri = new GeneralName(GeneralName.uniformResourceIdentifier, "https://example.com/");
@@ -154,6 +165,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAMissingCertificateFile() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -163,6 +175,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAMissingKeyFile() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -172,6 +185,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAnUnreadableCertificateFile() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -184,6 +198,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAnUnreadableKeyFile() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -196,6 +211,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateFileThatIsNotPem() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write("just some text\n", pkcs8(pair.getPrivate()));
@@ -204,6 +220,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateInDerForm() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write("", pkcs8(pair.getPrivate()));
@@ -213,6 +230,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateBlockThatIsNotBase64() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write("-----BEGIN CERTIFICATE-----\nnot base64!\n-----END CERTIFICATE-----\n",
@@ -222,6 +240,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateBlockThatHoldsNoCertificate() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(block("CERTIFICATE", new byte[] {48, 3, 2, 1, 1}), pkcs8(pair.getPrivate()));
@@ -230,6 +249,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateFileThatHoldsOnlyAKey() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pkcs8(pair.getPrivate()), pkcs8(pair.getPrivate()));
@@ -238,6 +258,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAKeyFileThatIsNotPem() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), "just some text\n");
@@ -246,6 +267,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAKeyFileThatHoldsOnlyACertificate() throws Exception {
         KeyPair pair = ecKeyPair();
         String certificate = pem(selfSigned(pair, List.of(dns(NODE))));
@@ -255,6 +277,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesATruncatedKeyWithoutQuotingIt() throws Exception {
         KeyPair pair = ecKeyPair();
         String key = sec1(pair);
@@ -272,6 +295,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAKeyOfAnUnsupportedAlgorithm() throws Exception {
         KeyPair pair = ecKeyPair();
         PrivateKey ed25519 = KeyPairGenerator.getInstance("Ed25519").generateKeyPair().getPrivate();
@@ -281,6 +305,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAKeyOfAnotherCertificate() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(ecKeyPair().getPrivate()));
@@ -289,6 +314,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAnRsaKeyForAnEcCertificate() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs1(rsaKeyPair().getPrivate()));
@@ -297,6 +323,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesAnExpiredCertificate() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -307,6 +334,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void refusesACertificateThatIsNotValidYet() throws Exception {
         KeyPair pair = ecKeyPair();
         TlsFiles files = write(pem(selfSigned(pair, List.of(dns(NODE)))), pkcs8(pair.getPrivate()));
@@ -317,6 +345,7 @@ class TlsMaterialTest {
     }
 
     @Test
+    @Tag("TLS-3")
     void readsWithTheSystemClock() throws Exception {
         KeyPair pair = ecKeyPair();
         Instant now = Instant.now();
