@@ -39,6 +39,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class SecurityHeadersTest {
@@ -65,6 +66,7 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-3")
     void servesThePageWithTheHeadersOfTheContract() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
 
@@ -75,6 +77,7 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-3")
     void addsTheHeadersToANotFoundAnswer() throws Exception {
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/");
 
@@ -86,6 +89,7 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-3")
     void servesTheSameHeadersOnTheNetworkAddress() throws Exception {
         X509Certificate certificate = startWithNetworkAddress();
         HttpClient https = HttpClient.newBuilder().sslContext(trusting(certificate)).build();
@@ -98,6 +102,8 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-3")
+    @Tag("HTTP-4")
     void servesTheBuiltPageAndItsScriptWithTheHeaders() throws Exception {
         startWithTheBuiltClient();
 
@@ -113,6 +119,7 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-4")
     void theBuiltPageHasNothingInlineTheCspWouldBlock() throws Exception {
         startWithTheBuiltClient();
 
@@ -128,6 +135,7 @@ class SecurityHeadersTest {
     }
 
     @Test
+    @Tag("HTTP-4")
     void findsInlineScriptsAndStylesInAPage() {
         String page = "<head><script type=\"module\" src=\"/a.js\"></script><script>alert(1)</script>"
                 + "<STYLE>p{}</STYLE></head>";

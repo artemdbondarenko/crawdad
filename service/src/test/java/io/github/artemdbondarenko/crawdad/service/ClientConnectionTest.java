@@ -19,6 +19,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class ClientConnectionTest {
@@ -41,6 +42,9 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-3")
+    @Tag("MSG-4")
+    @Tag("MSG-6")
     void forwardsTheAgentAnswerInOrder() {
         sent.clear();
 
@@ -55,6 +59,7 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-8")
     void reportsBrokenJsonAndKeepsWorking() {
         sent.clear();
 
@@ -66,6 +71,8 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-7")
+    @Tag("MSG-8")
     void reportsAnUnknownTypeAndKeepsWorking() {
         sent.clear();
 
@@ -77,6 +84,7 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-8")
     void reportsAMessageOfAnotherSessionAndKeepsWorking() {
         sent.clear();
 
@@ -88,6 +96,7 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-8")
     void reportsAMessageOnlyTheServiceMaySend() {
         sent.clear();
 
@@ -98,6 +107,7 @@ class ClientConnectionTest {
     }
 
     @Test
+    @Tag("MSG-9")
     void reportsAFailingAgentWithoutItsDetailsAndKeepsWorking() {
         IllegalStateException failure = new IllegalStateException("internal detail");
         adapter.failure = failure;

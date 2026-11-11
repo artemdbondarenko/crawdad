@@ -162,13 +162,13 @@ describe("serviceUrl", () => {
 });
 
 describe("ServiceConnection", () => {
-  it("opens the socket at the service address", async () => {
+  it("UI-1: opens the socket at the service address", async () => {
     const { socket } = await connect();
 
     expect(socket.url).toBe("ws://127.0.0.1:8460/ws");
   });
 
-  it("is connecting until the service names the session, then connected", async () => {
+  it("UI-1, MSG-3: is connecting until the service names the session, then connected", async () => {
     const { socket, connection } = await connect();
     expect(connection.conversation.state).toBe("connecting");
 
@@ -181,7 +181,7 @@ describe("ServiceConnection", () => {
     expect(connection.conversation.canSend).toBe(true);
   });
 
-  it("is lost when the socket closes, and cannot send any more", async () => {
+  it("UI-5: is lost when the socket closes, and cannot send any more", async () => {
     const { socket, connection } = await connected();
 
     socket.drop();
@@ -192,7 +192,7 @@ describe("ServiceConnection", () => {
     expect(socket.sent).toEqual([]);
   });
 
-  it("sends nothing before session.started", async () => {
+  it("MSG-3: sends nothing before session.started", async () => {
     const { socket, connection } = await connect();
     socket.open();
 
@@ -202,7 +202,7 @@ describe("ServiceConnection", () => {
     expect(connection.conversation.entries).toEqual([]);
   });
 
-  it("sends the text as user.message of its session and shows it", async () => {
+  it("MSG-3, UI-2: sends the text as user.message of its session and shows it", async () => {
     const { socket, connection } = await connected();
 
     expect(connection.send("hi")).toBe(true);
@@ -211,7 +211,7 @@ describe("ServiceConnection", () => {
     expect(connection.conversation.entries).toEqual([{ kind: "user", text: "hi" }]);
   });
 
-  it("joins the parts of an answer into one message, finished by end", async () => {
+  it("MSG-5, UI-3, UI-4: joins the parts of an answer into one message, finished by end", async () => {
     const { socket, connection } = await connected();
     connection.send("hi");
     // Waiting for the answer: no second text until it is complete.
@@ -238,7 +238,7 @@ describe("ServiceConnection", () => {
     expect(connection.conversation.canSend).toBe(true);
   });
 
-  it("keeps the parts of two answers apart", async () => {
+  it("MSG-4, MSG-5: keeps the parts of two answers apart", async () => {
     const { socket, connection } = await connected();
 
     socket.receive(start("m1"));
@@ -255,7 +255,7 @@ describe("ServiceConnection", () => {
     ]);
   });
 
-  it("shows an error in the conversation and lets the user send again", async () => {
+  it("UI-7: shows an error in the conversation and lets the user send again", async () => {
     const { socket, connection } = await connected();
     connection.send("hi");
 
@@ -326,7 +326,7 @@ describe("ServiceConnection", () => {
 });
 
 describe("ServiceConnection with device keys", () => {
-  it("SCREEN-1: does nothing until started, then asks GET /device with the cookie before opening the socket", async () => {
+  it("UI-1, SCREEN-1: does nothing until started, then asks GET /device with the cookie before opening the socket", async () => {
     const { socket, device, connection } = create();
     expect(device.calls).toEqual([]);
 
@@ -416,7 +416,7 @@ describe("ServiceConnection with device keys", () => {
     expect(socket.opened).toBe(1);
   });
 
-  it("is revoked on close code 4001 and never reconnects", async () => {
+  it("UI-8, MSG-11: is revoked on close code 4001 and never reconnects", async () => {
     const { socket, device, timers, connection } = await connected();
     connection.send("hi");
 
@@ -431,7 +431,7 @@ describe("ServiceConnection with device keys", () => {
     expect(socket.opened).toBe(1);
   });
 
-  it("after any other close checks the device again and reconnects into a new session", async () => {
+  it("UI-5, WS-6: after any other close checks the device again and reconnects into a new session", async () => {
     const { socket, device, timers, connection } = await connected();
     connection.send("hi");
 
@@ -532,7 +532,7 @@ describe("ServiceConnection with device keys", () => {
     expect(connection.conversation.canSend).toBe(true);
   });
 
-  it("becomes unpaired when the device check after a close answers 401", async () => {
+  it("UI-5: becomes unpaired when the device check after a close answers 401", async () => {
     const { socket, device, timers, connection } = await connected();
     device.answers.push(401);
 
@@ -545,7 +545,7 @@ describe("ServiceConnection with device keys", () => {
     expect(timers.waiting).toBe(0);
   });
 
-  it("retries an unreachable service with pauses doubling up to 30 seconds", async () => {
+  it("UI-1, UI-5: retries an unreachable service with pauses doubling up to 30 seconds", async () => {
     const { socket, device, timers, connection } = create();
     device.answers.push("offline", 503, 502, 500, "offline", "offline", "offline", "offline");
 
@@ -562,7 +562,7 @@ describe("ServiceConnection with device keys", () => {
     expect(socket.opened).toBe(1);
   });
 
-  it("counts a socket that closes before its session as a failure, and session.started resets the pause", async () => {
+  it("UI-5: counts a socket that closes before its session as a failure, and session.started resets the pause", async () => {
     const { socket, timers } = await connect();
 
     // The handshake is refused twice: the pauses grow.

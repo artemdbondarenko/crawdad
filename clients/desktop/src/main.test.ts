@@ -114,7 +114,7 @@ describe("render", () => {
     expect(document.title).toBe("Crawdad (desktop)");
   });
 
-  it("shows the connecting, connected and lost states", () => {
+  it("UI-1, UI-5: shows the connecting, connected and lost states", () => {
     expect(status().dataset["state"]).toBe("connecting");
     expect(status().textContent).toBe("Connecting…");
 
@@ -127,7 +127,7 @@ describe("render", () => {
     expect(status().textContent).toBe("Connection lost");
   });
 
-  it("says when the device is not paired or was unpaired, and keeps input disabled", () => {
+  it("UI-8: says when the device is not paired or was unpaired, and keeps input disabled", () => {
     connection.change({ state: "unpaired", canSend: false });
     expect(status().dataset["state"]).toBe("unpaired");
     expect(status().textContent).toBe("This device is not paired");
@@ -150,7 +150,7 @@ describe("render", () => {
     expect(pairingForm().hidden).toBe(true);
   });
 
-  it("keeps the input disabled until the conversation can take a text", () => {
+  it("UI-2, UI-10: keeps the input disabled until the conversation can take a text", () => {
     expect(input().disabled).toBe(true);
     expect(button().disabled).toBe(true);
 
@@ -160,7 +160,7 @@ describe("render", () => {
     expect(button().disabled).toBe(false);
   });
 
-  it("sends a text, waits for the answer as it grows, then accepts input again", () => {
+  it("UI-2, UI-3, UI-4: sends a text, waits for the answer as it grows, then accepts input again", () => {
     connection.change({ state: "connected", canSend: true });
 
     // The owner sends a text: it goes to the connection and the field is cleared.
@@ -200,7 +200,7 @@ describe("render", () => {
     expect(root.querySelector("[data-kind=agent]")?.hasAttribute("data-pending")).toBe(false);
   });
 
-  it("marks an answer that is still arriving", () => {
+  it("UI-3: marks an answer that is still arriving", () => {
     connection.change({
       state: "connected",
       entries: [{ kind: "agent", id: "m1", text: "You", complete: false }],
@@ -243,7 +243,7 @@ describe("render", () => {
     ]);
   });
 
-  it("shows an error from the service as a message", () => {
+  it("UI-7: shows an error from the service as a message", () => {
     connection.change({
       state: "connected",
       entries: [{ kind: "error", text: "The agent could not answer" }],
@@ -253,15 +253,24 @@ describe("render", () => {
     expect(messages()).toEqual([{ kind: "error", text: "The agent could not answer" }]);
   });
 
-  it("sends nothing for an empty text", () => {
+  it("UI-6: sends nothing for a text of only spaces and keeps it in the field", () => {
     connection.change({ state: "connected", canSend: true });
 
     submit("   ");
 
     expect(connection.sent).toEqual([]);
+    expect(input().value).toBe("   ");
   });
 
-  it("keeps the text in the field when the connection does not take it", () => {
+  it("UI-6: removes the spaces at both ends before sending", () => {
+    connection.change({ state: "connected", canSend: true });
+
+    submit("  hello  ");
+
+    expect(connection.sent).toEqual(["hello"]);
+  });
+
+  it("UI-6: keeps the text in the field when the connection does not take it", () => {
     connection.change({ state: "connected", canSend: true });
     connection.accepts = false;
 
@@ -270,7 +279,7 @@ describe("render", () => {
     expect(input().value).toBe("hello");
   });
 
-  it("shows agent output and errors as text, never as markup", () => {
+  it("UI-11: shows agent output and errors as text, never as markup", () => {
     connection.change({
       state: "connected",
       entries: [
@@ -303,7 +312,7 @@ describe("pairing screen", () => {
     expect(pairingError().textContent).toBe("");
   });
 
-  it("is shown after the device was unpaired, saying so", () => {
+  it("UI-8: is shown after the device was unpaired, saying so", () => {
     connection.change({ state: "revoked" });
 
     expect(pairingForm().hidden).toBe(false);

@@ -20,6 +20,9 @@ class OriginGuardTest {
         // Scheme and host names are case-insensitive in both headers.
         "HTTP://127.0.0.1:8460, 127.0.0.1:8460"
     })
+    @Tag("WS-1")
+    @Tag("WS-2")
+    @Tag("WS-3")
     void letsThePageServedByTheServiceConnect(String origin, String host) {
         assertThat(loopback.allows(origin, host)).isTrue();
     }
@@ -44,6 +47,9 @@ class OriginGuardTest {
         // an Origin with a path is not an origin
         "http://127.0.0.1:8460/, 127.0.0.1:8460"
     })
+    @Tag("WS-1")
+    @Tag("WS-2")
+    @Tag("WS-3")
     void rejectsEverythingElse(String origin, String host) {
         assertThat(loopback.allows(origin, host)).isFalse();
     }
