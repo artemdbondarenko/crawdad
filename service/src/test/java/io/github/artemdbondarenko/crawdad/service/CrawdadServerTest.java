@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -74,6 +75,7 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.eclipse.jetty.io.EofException;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -85,6 +87,8 @@ class CrawdadServerTest {
     private static final String NETWORK_HOST = "127.0.0.2";
     /** The name in the test certificate, as {@code tailscale cert} would write it. */
     private static final String NETWORK_NAME = "crawdad.test";
+    /** A second name in the certificate, which the service does not print. */
+    private static final String OTHER_NAME = "other.crawdad.test";
     private static final String NL = System.lineSeparator();
 
     @TempDir
@@ -424,22 +428,36 @@ class CrawdadServerTest {
     }
 
     @Test
-    void refusesAHostThatDoesNotMatchTheSni() throws Exception {
-        startWithHost(dns(NETWORK_NAME), ip(NETWORK_HOST));
+    @Tag("NET-10")
+    void refusesAHostThatDiffersFromTheServerName() throws Exception {
+        startWithHost(dns(NETWORK_NAME), dns(OTHER_NAME), ip(NETWORK_HOST));
         int port = server.networkAddress().orElseThrow().getPort();
         String foreign = "evil.example:" + port;
 
-        // A Host the certificate does not cover: Jetty refuses it before any handler runs.
         try (SSLSocket socket = tls(port, NETWORK_NAME)) {
             assertThat(send(socket, page(foreign))).startsWith("HTTP/1.1 400");
         }
         try (SSLSocket socket = tls(port, NETWORK_NAME)) {
             assertThat(send(socket, webSocket(foreign, "https://" + foreign))).startsWith("HTTP/1.1 400");
         }
-        // A Host the certificate covers but the service does not print: the guard of the connector refuses.
+        // The certificate covers the IP address too, but the browser asked for the name.
         String byIp = NETWORK_HOST + ":" + port;
         try (SSLSocket socket = tls(port, NETWORK_NAME)) {
-            assertThat(send(socket, webSocket(byIp, "https://" + byIp))).startsWith("HTTP/1.1 403");
+            assertThat(send(socket, page(byIp))).startsWith("HTTP/1.1 400");
+        }
+        try (SSLSocket socket = tls(port, NETWORK_NAME)) {
+            assertThat(send(socket, webSocket(byIp, "https://" + byIp, networkKeyCookie())))
+                    .startsWith("HTTP/1.1 400");
+        }
+        // The other way round: the name the certificate covers, after asking for another one it covers.
+        String byName = NETWORK_NAME + ":" + port;
+        try (SSLSocket socket = tls(port, OTHER_NAME)) {
+            assertThat(send(socket, page(byName))).startsWith("HTTP/1.1 400");
+        }
+        // Names are compared ignoring case, as DNS does.
+        String upperCase = NETWORK_NAME.toUpperCase(Locale.ROOT) + ":" + port;
+        try (SSLSocket socket = tls(port, NETWORK_NAME)) {
+            assertThat(send(socket, page(upperCase))).startsWith("HTTP/1.1 200");
         }
         // The loopback page sent to the TLS connector is judged by the TLS connector.
         String loopback = server.address().getAuthority();

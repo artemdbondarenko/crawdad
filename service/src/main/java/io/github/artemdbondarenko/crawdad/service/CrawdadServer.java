@@ -51,7 +51,6 @@ import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.NetworkConnectionLimit;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
-import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
@@ -310,8 +309,8 @@ public final class CrawdadServer {
 
     /**
      * A TLS-only connector on {@code --host}: plain HTTP there fails the TLS handshake, with no redirect.
-     * The default {@link SecureRequestCustomizer} answers 400 to a {@code Host} the certificate chosen by
-     * the handshake does not name; without SNI, as for an IP address, the certificate is the only one.
+     * {@link ServerNameCheck} answers 400 to a {@code Host} that differs from the TLS server name, or that
+     * the certificate does not name.
      */
     private static Network addNetwork(Server server, ServiceConfig config, NetworkCertificate certificate)
             throws GeneralSecurityException, IOException {
@@ -323,7 +322,7 @@ public final class CrawdadServer {
         tls.setIncludeProtocols("TLSv1.3", "TLSv1.2");
 
         HttpConfiguration https = new HttpConfiguration();
-        https.addCustomizer(new SecureRequestCustomizer());
+        https.addCustomizer(new ServerNameCheck());
         ServerConnector connector = new ServerConnector(server,
                 new SslConnectionFactory(tls, HttpVersion.HTTP_1_1.asString()), new HttpConnectionFactory(https));
         connector.setHost(config.host());
