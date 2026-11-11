@@ -126,6 +126,21 @@ pnpm licenses:check  # licenses of production dependencies
 pnpm --filter @crawdad/desktop dev   # desktop client with live reload
 ```
 
+## Tests and requirements
+
+A test names the requirements of [`specs/`](../specs/) it checks, so that a requirement can be
+followed to its tests and back:
+
+- **Java** (service, protocol): a JUnit tag per requirement, `@Tag("PAIR-8")`.
+- **TypeScript** (clients): the identifiers in front of the test name,
+  `it("SCREEN-2, SCREEN-3: fills the code from a pairing link", …)`.
+
+To find the tests of a requirement, search for its identifier:
+
+```sh
+git grep -n -e '@Tag("PAIR-8")' -e '"PAIR-8[,:]' -e ', PAIR-8[,:]'
+```
+
 ## Changes
 
 Every change goes through a pull request. A pull request holds one change with one meaning, as a
