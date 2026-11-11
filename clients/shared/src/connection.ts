@@ -52,10 +52,19 @@ export type ConnectionState =
 /** The states in which the connection has stopped and waits for `start()`. */
 type HaltedState = "unpaired" | "revoked" | "wrong_address";
 
+/**
+ * One line of the conversation. An answer that a lost connection cut off is `interrupted` and never grows
+ * again (`UI-9`); a `notice` comes from the client itself, such as the start of a new session (`UI-10`).
+ */
 export type ConversationEntry =
   | { kind: "user"; text: string }
-  | { kind: "agent"; id: string; text: string; complete: boolean }
-  | { kind: "error"; text: string };
+  | { kind: "agent"; id: string; text: string; complete: boolean; interrupted?: true }
+  | { kind: "error"; text: string }
+  | { kind: "notice"; text: string };
+
+/** Shown below the earlier messages when the client connects again in a new session (`UI-10`). */
+export const NEW_SESSION_NOTICE =
+  "Reconnected — new session. The agent does not remember the messages above.";
 
 /** Everything a client shows; a new object on every change. */
 export interface Conversation {
@@ -117,6 +126,8 @@ export class ServiceConnection {
   private readonly listeners = new Set<(conversation: Conversation) => void>();
   private socket: Socket | undefined;
   private sessionId: string | undefined;
+  /** Whether a session has started before, so that the next one is announced as new. */
+  private hadSession = false;
   private state: ConnectionState = "connecting";
   private entries: ConversationEntry[] = [];
   private waitingForAnswer = false;
@@ -227,6 +238,10 @@ export class ServiceConnection {
     this.socket = undefined;
     this.sessionId = undefined;
     this.waitingForAnswer = false;
+    // The events of this socket are ignored from now on, so an unfinished answer cannot grow again.
+    for (const entry of this.entries) {
+      if (entry.kind === "agent" && !entry.complete) entry.interrupted = true;
+    }
     if (code === CLOSE_UNPAIRED) {
       this.halt("revoked");
       return;
@@ -266,6 +281,8 @@ export class ServiceConnection {
     }
     switch (message.type) {
       case "session.started":
+        if (this.hadSession) this.entries.push({ kind: "notice", text: NEW_SESSION_NOTICE });
+        this.hadSession = true;
         this.sessionId = message.session_id;
         this.state = "connected";
         this.pauseMs = FIRST_PAUSE_MS;
