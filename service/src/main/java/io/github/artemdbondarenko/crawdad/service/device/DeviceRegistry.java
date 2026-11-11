@@ -1,7 +1,11 @@
 package io.github.artemdbondarenko.crawdad.service.device;
 
+import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry.Connection;
+import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +34,13 @@ import tools.jackson.databind.json.JsonMapper;
 public final class DeviceRegistry {
 
     public static final String FILE_NAME = "devices.json";
+
+    /** The WebSocket close status a revoked device's connections end with; the client does not reconnect. */
+    public static final int UNPAIRED_STATUS = 4001;
+
+    public static final String UNPAIRED_REASON = "unpaired";
+
+    private static final Logger LOG = System.getLogger(DeviceRegistry.class.getName());
 
     private static final int VERSION = 1;
     private static final int KEY_BYTES = 32;
@@ -149,14 +160,23 @@ public final class DeviceRegistry {
         throw new IllegalArgumentException("No device with id " + id);
     }
 
-    /** Revokes the active device with the name: its key hash is erased and the date recorded. */
-    public synchronized RevokeResult revoke(String name) throws IOException {
+    /**
+     * Revokes the active device with the name: its key hash is erased and the date recorded, then every
+     * connection of it in {@code connections} is closed with {@link #UNPAIRED_STATUS}. A handshake admits
+     * and registers its connection under this monitor too, so none slips past. A failed write closes nothing.
+     */
+    public synchronized RevokeResult revoke(String name, ConnectionRegistry connections) throws IOException {
+        Objects.requireNonNull(connections, "connections");
         Optional<Device> active = activeByName(name);
         if (active.isPresent()) {
             Device revoked = active.get().withRevocation(clock.instant());
             List<Device> changed = new ArrayList<>(devices);
             changed.set(changed.indexOf(active.get()), revoked);
             save(changed);
+            List<Connection> open = connections.connectionsOf(revoked.id());
+            open.forEach(connection -> connection.close(UNPAIRED_STATUS, UNPAIRED_REASON));
+            LOG.log(Level.INFO, "Device revoked: {0}, closed {1} connections", LogText.safe(revoked.name()),
+                    String.valueOf(open.size()));
             return new RevokeResult.Revoked(revoked);
         }
         Optional<Instant> lastRevoked = devices.stream()

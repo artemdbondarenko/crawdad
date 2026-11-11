@@ -83,6 +83,33 @@ class PairingCodesTest {
     }
 
     @Test
+    void aDeviceThatCouldNotBeSavedFailsTheCodeForGood() {
+        Issued issued = codes.issue(null);
+        Attempt.Accepted accepted = (Attempt.Accepted) codes.attempt(issued.code(), PHONE);
+
+        accepted.failed();
+
+        assertThat(issued.outcome()).isCompletedWithValue(new PairingOutcome.Failed());
+        // The code is not given back: entering it again is rejected.
+        assertThat(codes.attempt(issued.code(), PHONE)).isInstanceOf(Attempt.Rejected.class);
+    }
+
+    @Test
+    void onlyTheFirstReportOfAnAcceptedAttemptCounts() {
+        Issued paired = codes.issue(null);
+        Attempt.Accepted first = (Attempt.Accepted) codes.attempt(paired.code(), PHONE);
+        first.paired("phone", PHONE, null);
+        first.failed();
+        assertThat(paired.outcome()).isCompletedWithValue(new PairingOutcome.Paired("phone", PHONE, null));
+
+        Issued failed = codes.issue(null);
+        Attempt.Accepted second = (Attempt.Accepted) codes.attempt(failed.code(), PHONE);
+        second.failed();
+        second.paired("phone", PHONE, null);
+        assertThat(failed.outcome()).isCompletedWithValue(new PairingOutcome.Failed());
+    }
+
+    @Test
     void withoutANameTheAcceptedAttemptHasNone() {
         Issued issued = codes.issue(null);
 
@@ -138,6 +165,37 @@ class PairingCodesTest {
         assertThat(next.previousBurnedFrom()).contains(List.of(STRANGER));
         assertThat(after.previousBurnedFrom()).isEmpty();
         assertThat(codes.attempt(after.code(), PHONE)).isInstanceOf(Attempt.Accepted.class);
+    }
+
+    @Test
+    void aBurnReportedToItsWaiterIsNotRepeatedByTheNextCode() {
+        Issued burned = codes.issue(null);
+        for (int i = 0; i < 5; i++) {
+            codes.attempt(wrong(burned.code()), STRANGER);
+        }
+
+        codes.burnReported((PairingOutcome.Burned) burned.outcome().join());
+
+        assertThat(codes.issue(null).previousBurnedFrom()).isEmpty();
+    }
+
+    @Test
+    void reportingAnOlderBurnLeavesTheLatestOneForTheNextCode() {
+        Issued first = codes.issue(null);
+        for (int i = 0; i < 5; i++) {
+            codes.attempt(wrong(first.code()), STRANGER);
+        }
+        PairingOutcome.Burned older = (PairingOutcome.Burned) first.outcome().join();
+        Issued second = codes.issue(null);
+        for (int i = 0; i < 5; i++) {
+            codes.attempt(wrong(second.code()), PHONE);
+        }
+
+        // The first waiter's answer arrives late; the second burn, which nobody saw, stays remembered.
+        codes.burnReported(older);
+        codes.burnReported(new PairingOutcome.Burned(List.of(PHONE)));
+
+        assertThat(codes.issue(null).previousBurnedFrom()).contains(List.of(PHONE));
     }
 
     @Test

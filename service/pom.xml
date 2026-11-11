@@ -26,6 +26,11 @@
       <type>pom</type>
       <scope>provided</scope>
     </dependency>
+    <!-- Used directly for devices.json and the body of POST /pair, not only through crawdad-protocol. -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
@@ -33,6 +38,21 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>jetty-websocket-jetty-server</artifactId>
+    </dependency>
+    <!-- Issues the service's own root and server certificates for the network address. -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+    </dependency>
+    <!-- Draws the QR code that crawdad pair prints for a phone. -->
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>core</artifactId>
+      <version>3.5.4</version>
     </dependency>
     <!-- Jetty logs through SLF4J; this sends them to java.util.logging, where the service logs too. -->
     <dependency>

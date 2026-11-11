@@ -14,13 +14,26 @@ export {
   ServiceConnection,
   browserSocket,
   serviceUrl,
+  type ConnectionDependencies,
   type ConnectionState,
   type Conversation,
   type ConversationEntry,
+  type DeviceFetch,
+  type DeviceResponse,
+  type PageLocation,
   type Socket,
   type SocketEvents,
   type SocketFactory,
+  type Timers,
 } from "./connection";
+
+export {
+  pairDevice,
+  pairingCodeFromHash,
+  type PairFetch,
+  type PairResponse,
+  type PairingResult,
+} from "./pairing";
 
 /** Title shown by a Crawdad client, such as in the window title. */
 export function appTitle(clientName: string): string {

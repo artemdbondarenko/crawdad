@@ -1,6 +1,6 @@
 # ADR-0002: Architecture: a service and thin clients
 
-- **Status:** Accepted
+- **Status:** Accepted; decision 5 refined by [ADR-0006](0006-tls-on-private-network-addresses.md)
 - **Date:** 2026-10-26
 
 ## Context

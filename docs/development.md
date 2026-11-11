@@ -39,12 +39,66 @@ CI runs the same command on every pull request.
 one and `JAVA_HOME` is not set, plain `java` works.
 
 The service prints the address to open, `http://127.0.0.1:8460/` by default; open exactly that
-address in a browser. Options: `--port <number>` (`0` picks a free port) and `--host <address>` (IPv4 or a host
-name; IPv6 is not supported yet).
-The jar finds its dependencies in `service/target/lib/`, next to it. Stop the service with Ctrl+C.
+address in a browser. The jar finds its dependencies in `service/target/lib/`, next to it. Stop the
+service with Ctrl+C.
 
-The service has no authentication yet; see the
-[limitation of this version](../specs/conversation.md#limitation-of-this-version).
+Options:
+
+- `--port <number>`: the port, `8460` by default; `0` picks a free port.
+- `--host <private address>`: also listen on this network address, over TLS only. It takes an IPv4
+  address or a host name that resolves to a private address; loopback, `0.0.0.0` and public addresses are refused.
+  IPv6 is not supported yet. `127.0.0.1` is always served over plain HTTP.
+- `--tls-cert <file> --tls-key <file>`: the PEM certificate and key for the `--host` address, such as
+  those from `tailscale cert`. Both or neither; they need `--host`. Without them the service issues
+  its own certificate.
+
+A wrong option, an unusable certificate or a second instance stops the start with a one-line
+message and exit code 1. Remote access step by step: [remote-access.md](remote-access.md).
+
+### Pair a device
+
+Every connection needs a paired device, also on `127.0.0.1`. The owner's commands run from the same
+jar, with the service running. There is no `crawdad` wrapper yet:
+
+```sh
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar pair [--name <name>]
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar devices [--all]
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar revoke <name>
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar tls export-ca
+```
+
+- `pair` prints a six-digit code, valid for 5 minutes, and a link `http://127.0.0.1:<port>/#pair=<code>`.
+  With `--host` it also prints a QR code and the network link. Open the link and press
+  **Pair this device**. `pair` then waits and prints the result: the device name, address and
+  browser, or that the code expired, burned after wrong attempts (with their addresses) or was
+  replaced by a newer `pair`. Exit code 0 only when a device paired, otherwise 1; Ctrl+C stops
+  waiting, and the code stays valid. A new `pair` replaces the previous code. Without `--name`, the
+  name comes from the browser and the OS.
+- `devices` lists the active devices: name, pairing time, last sign-in, address, browser and
+  listener (`loopback` or `network`). `--all` adds revoked devices with the revocation time.
+- `revoke <name>` revokes an active device and closes its open connections at once. An unknown
+  name prints the active devices; exit code 1.
+- `tls export-ca` prints the service's own root certificate, for installing on devices; see
+  [remote-access.md](remote-access.md#with-the-services-own-root).
+
+When the service is not running, the commands say so, with the command to start it, and exit with 1.
+Wrong arguments exit with 2.
+
+### Files
+
+- Data: `$XDG_DATA_HOME/crawdad/` (by default `~/.local/share/crawdad/`): `devices.json` with the
+  paired devices (only a hash of each key), and `tls/` with the service's own root.
+- Control socket: `$XDG_RUNTIME_DIR/crawdad/control.sock`, next to the instance lock `crawdad.lock`.
+  Without `XDG_RUNTIME_DIR`, both go to `run/` inside the data directory, and the service logs a
+  WARNING.
+
+Directories are created 0700 and files 0600, so other OS users cannot read them or use the socket.
+
+A Unix socket path is limited to 108 bytes. If `XDG_RUNTIME_DIR` (or the data directory, without it)
+is long, the service fails at start with `Unix domain path too long`. Use a shorter directory.
+
+**One service per OS user.** A second service of the same user does not start
+("Crawdad is already running"). Services of two OS users on one machine are not supported.
 
 ## Repository layout
 

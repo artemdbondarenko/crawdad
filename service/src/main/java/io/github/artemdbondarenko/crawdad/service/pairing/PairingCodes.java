@@ -54,7 +54,8 @@ public final class PairingCodes {
 
         /**
          * The code was right and is now used up. The caller adds the device and then reports it with
-         * {@link #paired}, which tells the waiting {@code crawdad pair}.
+         * {@link #paired}, or reports with {@link #failed} that it could not; the first report tells the
+         * waiting {@code crawdad pair}, later ones change nothing.
          */
         final class Accepted implements Attempt {
 
@@ -73,6 +74,11 @@ public final class PairingCodes {
 
             public void paired(String name, String address, String userAgent) {
                 outcome.complete(new PairingOutcome.Paired(name, address, userAgent));
+            }
+
+            /** The device could not be added; the code is not given back. */
+            public void failed() {
+                outcome.complete(new PairingOutcome.Failed());
             }
 
             @Override
@@ -105,7 +111,8 @@ public final class PairingCodes {
     private final Clock clock;
     private final Timer timer;
     private Pending current;
-    private List<String> lastBurnedFrom;
+    /** The last code that burned, until a waiter got it or the next code reported it. */
+    private PairingOutcome.Burned lastBurned;
 
     /** Codes on the system clock, expired by a background timer. */
     public PairingCodes() {
@@ -135,8 +142,8 @@ public final class PairingCodes {
             } while (replaced != null && code.equals(new String(replaced.code, StandardCharsets.US_ASCII)));
             issued = new Pending(code, clock.instant().plus(TERM), Optional.ofNullable(requestedName));
             current = issued;
-            burnedFrom = lastBurnedFrom;
-            lastBurnedFrom = null;
+            burnedFrom = lastBurned == null ? null : lastBurned.addresses();
+            lastBurned = null;
         }
         if (replaced != null) {
             replaced.outcome.complete(new PairingOutcome.Replaced());
@@ -176,8 +183,8 @@ public final class PairingCodes {
                     pending.wrongFrom.add(address);
                     if (pending.wrongAttempts >= ATTEMPTS) {
                         current = null;
-                        lastBurnedFrom = List.copyOf(pending.wrongFrom);
-                        ended = new PairingOutcome.Burned(lastBurnedFrom);
+                        lastBurned = new PairingOutcome.Burned(List.copyOf(pending.wrongFrom));
+                        ended = lastBurned;
                     }
                 }
             }
@@ -186,6 +193,19 @@ public final class PairingCodes {
             pending.outcome.complete(ended);
         }
         return right ? new Attempt.Accepted(pending.requestedName, pending.outcome) : new Attempt.Rejected();
+    }
+
+    /**
+     * Tells that {@code burned}, as completed by this object, reached the waiting {@code crawdad pair}, so the
+     * next code does not report it again. A later burn, which nobody has seen yet, stays remembered.
+     */
+    public void burnReported(PairingOutcome.Burned burned) {
+        synchronized (this) {
+            // Identity, not equality: an equal list of sources may belong to a newer code.
+            if (lastBurned == burned) {
+                lastBurned = null;
+            }
+        }
     }
 
     private void scheduleExpiry(Pending pending, Duration delay) {
