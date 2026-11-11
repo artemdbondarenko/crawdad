@@ -47,8 +47,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** The {@code pair}, {@code devices}, {@code revoke} and {@code tls export-ca} commands against a real control socket. */
 class CliTest {
@@ -241,7 +244,33 @@ class CliTest {
         assertThat(err()).isEqualTo(lines("Pairing failed: the service could not save the device; see the service log"));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @Tag("CMD-4")
+    @ValueSource(strings = {"pair", "devices", "revoke phone"})
+    void aServiceThatClosesTheConnectionWithoutAnAnswerIsReportedWithThePointerToTheLog(String command)
+            throws Exception {
+        socket.close();
+        Path path = data.runtime().resolve(ControlSocket.FILE_NAME);
+        try (ServerSocketChannel hangsUp = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
+            hangsUp.bind(UnixDomainSocketAddress.of(path));
+            // Accepts the command and closes, as the service does with a peer it refuses.
+            Thread.ofVirtual().start(() -> {
+                try {
+                    hangsUp.accept().close();
+                } catch (IOException e) {
+                    // The test ends either way.
+                }
+            });
+
+            assertThat(run(command.split(" "))).isEqualTo(1);
+        }
+
+        assertThat(err()).isEqualTo(lines("Crawdad closed the connection without an answer; see the service log."));
+        assertThat(out()).isEmpty();
+    }
+
     @Test
+    @Tag("PAIRCMD-3")
     void aServiceThatStopsDuringTheWaitEndsTheCommand() throws Exception {
         CompletableFuture<Integer> exit = runInBackground("pair");
         awaitCode();
@@ -277,10 +306,12 @@ class CliTest {
     }
 
     @Test
-    void anInvalidNameIsRefusedWithoutACode() {
+    @Tag("PAIRCMD-7")
+    void anInvalidNameIsRefusedWithoutACodeSayingWhatANameMayBe() {
         assertThat(run("pair", "--name", " ")).isEqualTo(1);
 
-        assertThat(err()).isEqualTo(lines("The device name must be 1 to 64 characters, without control characters."));
+        assertThat(err()).isEqualTo(lines("The device name must be 1 to 64 characters, without control characters,"
+                + " format characters such as direction marks, or line and paragraph separators."));
         assertThat(out()).isEmpty();
     }
 
@@ -399,13 +430,14 @@ class CliTest {
     }
 
     @Test
-    void exportCaWithoutARootTellsToStartTheServiceWithHostFirst() {
+    @Tag("CA-5")
+    void exportCaWithoutARootTellsToStartTheServiceWithHostAndNoCertificateFiles() {
         socket.close();
 
         assertThat(run("tls", "export-ca")).isEqualTo(1);
 
-        assertThat(err()).isEqualTo(lines(
-                "No root certificate yet: start Crawdad with --host <private address> first."));
+        assertThat(err()).isEqualTo(lines("No root certificate yet: start Crawdad with --host <private address>"
+                + " and without --tls-cert and --tls-key to create it."));
         assertThat(out()).isEmpty();
     }
 

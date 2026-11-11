@@ -163,13 +163,20 @@ public final class Cli {
             if (connection == null) {
                 return notRunning();
             }
-            JsonNode first = connection.ask(request);
+            JsonNode first;
+            try {
+                first = connection.ask(request);
+            } catch (IOException e) {
+                return lostConnection();
+            }
+            // No code yet: the service closed the connection without an answer (CMD-4), not after it (PAIRCMD-3).
             if (first == null) {
-                return stopped();
+                return lostConnection();
             }
             if ("invalid_name".equals(text(first, "error"))) {
                 err.println("The device name must be 1 to " + ControlSocket.MAX_NAME_LENGTH
-                        + " characters, without control characters.");
+                        + " characters, without control characters, format characters such as direction marks,"
+                        + " or line and paragraph separators.");
                 return FAILED;
             }
             String code = text(first, "code");
@@ -318,7 +325,8 @@ public final class Cli {
             err.println("SHA-256 fingerprint: " + HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest));
             return DONE;
         } catch (NoSuchFileException e) {
-            err.println("No root certificate yet: start Crawdad with --host <private address> first.");
+            err.println("No root certificate yet: start Crawdad with --host <private address> and without"
+                    + " --tls-cert and --tls-key to create it.");
         } catch (IOException | GeneralSecurityException | ClassCastException e) {
             err.println(file + " is not a readable certificate: " + LogText.safe(e.getMessage()));
         }
