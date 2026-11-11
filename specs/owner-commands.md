@@ -457,14 +457,10 @@ both ends ship in the same program.
 
 ## Implementation status
 
-The code on `main` has no commands, no control socket and no files.
-
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `CMD-1` | every argument is an option of the service; `pair` is an unknown option | #10 |
-| `CMD-2`–`CMD-6` | no control socket | #10 |
-| `CMD-7`, `CMD-8` | a second start fails only if the port is taken; with `--port 0` two services run | #10 |
-| `FILE-1`–`FILE-5` | the service keeps no files | #10 |
-| `PAIRCMD-1`–`PAIRCMD-8` | no `crawdad pair` and no pairing codes | #10 |
-| `DEV-1`–`DEV-10` | no devices: no `crawdad devices`, no `crawdad revoke` | #10 |
-| `CA-1`–`CA-5` | no own root certificate and no `crawdad tls export-ca` | #10 |
+| `CMD-4` | `crawdad pair` whose request gets no answer says that the service stopped before the code was used, and does not point at the service log | #32 |
+| `CMD-6` | the service listens on both addresses before it opens the control socket; when the socket cannot be opened, it stops, but has listened | #32 |
+| `FILE-4` | the control socket is created with the mode of the umask and narrowed to `0600` right after; until then only its `0700` directory keeps other users out | #32 |
+| `PAIRCMD-7` | the message for a refused name mentions control characters only | #32 |
+| `CA-5` | without a root the command says to start the service with `--host`, but not without certificate files | #32 |

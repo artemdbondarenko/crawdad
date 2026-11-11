@@ -318,13 +318,7 @@ The exact format of each message is the JSON Schema
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `HTTP-1` | `POST /pair` and `GET /device` answer `404` | #10 |
-| `HTTP-3` | no security headers | #10 |
-| `WS-5` | any handshake with the right `Origin` and `Host` is accepted; there are no keys | #10 |
-| `MSG-11`, `MSG-14` | no code `4001`; devices cannot be revoked | #10 |
 | `MSG-12`, `MSG-13` | no pings; a connection with no messages for 30 seconds is closed with `1001` | #17 |
-| `UI-1` | the client connects at once, without `GET /device`, and treats a refused handshake as a lost connection | #10 |
-| `UI-5` | the client shows that the connection is lost and never tries again | #10 |
-| `UI-8` | no pairing, so nothing to show | #10 |
-| `UI-9` | an unfinished answer is not marked | #10 |
-| `UI-10` | the client never connects again | #10 |
+| `UI-1` | on `403` from `GET /device` the client tries again, as with a service it cannot reach, and does not say that the page must be opened at the printed address | #32 |
+| `UI-9` | an answer cut by a lost connection is not marked | #32 |
+| `UI-10` | after connecting again the client says nothing about the new session | #32 |

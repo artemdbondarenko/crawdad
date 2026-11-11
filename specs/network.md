@@ -234,16 +234,6 @@ This file adds no messages. The startup output of `NET-4` is shown in `S-NET-1`,
 
 ## Implementation status
 
-The code on `main` has a single address and no TLS.
-
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `NET-1`, `NET-2` | `--host` replaces `127.0.0.1` instead of adding a second address; the one address is plain HTTP | #10 |
-| `NET-3` | a host name is not resolved at startup | #10 |
-| `NET-4` | prints the one address it listens on | #10 |
-| `NET-5` | any IPv4 address or host name is accepted, including public addresses and `0.0.0.0` | #10 |
-| `NET-6`, `NET-7` | the address set with `--host` is served over plain HTTP | #10 |
-| `NET-8` | no limit on connections; Jetty's default idle timeout | #10 |
-| `NET-9` | one site, `http://<host>:<port>`, where `<host>` is `--host` as given | #10 |
-| `NET-10` | no TLS, so no server name to compare | #10 |
-| `TLS-1`–`TLS-13` | no TLS: `--tls-cert` and `--tls-key` are unknown options | #10 |
+| `NET-10` | `Host` is compared with the names of the certificate, not with the TLS server name: with the own root, the server name of the machine's host name and the `Host` of the network address pass | #32 |
