@@ -51,6 +51,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -140,20 +141,32 @@ class CrawdadServiceTest {
     }
 
     @Test
-    void aControlSocketThatCannotStartStopsTheServerAndFailsTheStart() throws Exception {
+    @Tag("CMD-6")
+    void aControlSocketThatCannotBeOpenedFailsTheStartBeforeAnyAddressIsListenedOn() throws Exception {
         // A directory in the way of the socket cannot be replaced.
         Files.createDirectories(data().runtime().resolve(ControlSocket.FILE_NAME).resolve("blocker"));
-        int port;
-        try (ServerSocket free = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
-            port = free.getLocalPort();
+
+        try (ServerSocket taken = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            // The port is taken too: had the server tried to listen first, the start would fail on the port.
+            assertThatThrownBy(() -> run("--port", String.valueOf(taken.getLocalPort())))
+                    .isInstanceOf(DirectoryNotEmptyException.class);
         }
 
-        assertThatThrownBy(() -> run("--port", String.valueOf(port))).isInstanceOf(DirectoryNotEmptyException.class);
-
-        // The port is free again and the lock released.
-        try (ServerSocket again = new ServerSocket(port, 1, InetAddress.getLoopbackAddress())) {
-            assertThat(again.isBound()).isTrue();
+        try (InstanceLock lock = InstanceLock.acquire(data().runtime())) {
+            assertThat(lock).isNotNull();
         }
+    }
+
+    @Test
+    @Tag("CMD-6")
+    void aServerThatCannotListenClosesTheControlSocketAndReleasesTheLock() throws Exception {
+        Path socket = data().runtime().resolve(ControlSocket.FILE_NAME);
+        try (ServerSocket taken = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            assertThatThrownBy(() -> run("--port", String.valueOf(taken.getLocalPort())))
+                    .isInstanceOf(CrawdadServer.CannotListenException.class);
+        }
+
+        assertThat(socket).doesNotExist();
         try (InstanceLock lock = InstanceLock.acquire(data().runtime())) {
             assertThat(lock).isNotNull();
         }

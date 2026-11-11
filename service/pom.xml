@@ -13,6 +13,11 @@
   <artifactId>crawdad-service</artifactId>
   <name>Crawdad service</name>
 
+  <properties>
+    <!-- Filled in by JaCoCo's prepare-agent; empty when it is skipped, so the surefire argLine still works. -->
+    <argLine></argLine>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>io.github.artemdbondarenko.crawdad</groupId>
@@ -120,6 +125,14 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- JaCoCo puts its agent into argLine; the tests call umask through the FFM API as the jar does. -->
+          <argLine>@{argLine} --enable-native-access=ALL-UNNAMED</argLine>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>
           <archive>
@@ -128,6 +141,10 @@
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
             </manifest>
+            <manifestEntries>
+              <!-- The control socket is bound under a narrowed umask, called through the FFM API (FILE-4). -->
+              <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
+            </manifestEntries>
           </archive>
         </configuration>
       </plugin>
