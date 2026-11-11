@@ -36,6 +36,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.Callback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -152,6 +153,7 @@ class PairingHandlerTest {
     }
 
     @ParameterizedTest(name = "{0}")
+    @Tag("PAIR-8")
     @ValueSource(strings = {
         "{\"code\":\"12345\"}",
         "{\"code\":\"1234567\"}",
@@ -180,7 +182,33 @@ class PairingHandlerTest {
         assertThat(issued.outcome()).isCompletedWithValue(new PairingOutcome.Burned(List.of("127.0.0.1")));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @Tag("PAIR-8")
+    @ValueSource(strings = {
+        "{\"code\":\"%s\",\"name\":\"phone\"}",
+        "{\"name\":\"phone\",\"code\":\"%s\"}",
+        "{\"code\":\"%s\",\"code\":\"%<s\"}",
+        "{\"code\":\"000000\",\"code\":\"%s\"}",
+        "{\"code\":\"%s\",\"extra\":null}"
+    })
+    void aBodyWithMoreThanTheCodeIsAWrongAttemptEvenWithTheRightCode(String template) throws Exception {
+        Issued issued = codes.issue(null);
+        String body = template.formatted(issued.code());
+
+        for (int i = 0; i < PairingCodes.ATTEMPTS; i++) {
+            Answer refused = send(loopback, "POST", "/pair", body);
+            assertThat(refused.status()).isEqualTo(401);
+            assertThat(refused.body()).isEqualTo("{\"error\":\"invalid_code\"}");
+            assertThat(refused.header("set-cookie")).isEmpty();
+        }
+
+        // Five of them burned the code, so each one was counted, and none paired a device.
+        assertThat(issued.outcome()).isCompletedWithValue(new PairingOutcome.Burned(List.of("127.0.0.1")));
+        assertThat(devices.devices(true)).isEmpty();
+    }
+
     @Test
+    @Tag("PAIR-8")
     void aBodyOverOneKibibyteIsAWrongAttemptEvenWithTheRightCode() throws Exception {
         Issued issued = codes.issue(null);
         String padded = "{\"code\":\"" + issued.code() + "\"" + " ".repeat(1024) + "}";
