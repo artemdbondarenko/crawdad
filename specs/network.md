@@ -236,4 +236,3 @@ This file adds no messages. The startup output of `NET-4` is shown in `S-NET-1`,
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `NET-10` | `Host` is compared with the names of the certificate, not with the TLS server name: with the own root, the server name of the machine's host name and the `Host` of the network address pass | #32 |
