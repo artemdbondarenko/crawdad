@@ -240,11 +240,6 @@ The `error` values are part of the contract. All bodies are JSON (`application/j
 
 ## Implementation status
 
-The code on `main` has no pairing: `/pair` and `/device` answer `404`, and the client opens the
-conversation right away.
-
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `PAIR-1`–`PAIR-15` | no codes, no `POST /pair` | #10 |
-| `KEY-1`–`KEY-8` | no device keys, no `GET /device` | #10 |
-| `SCREEN-1`–`SCREEN-5` | no pairing screen | #10 |
+| `PAIR-8` | a body with fields besides `code`, or with `code` twice, is taken as a code, not counted as a wrong attempt | #32 |
