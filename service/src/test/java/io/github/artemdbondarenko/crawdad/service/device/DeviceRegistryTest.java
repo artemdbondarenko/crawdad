@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -75,6 +76,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("KEY-8")
     void repeatedNamesGetSuffixesAndARevokedNameIsFreeAgain() throws IOException {
         assertThat(registry.add("tablet", Listener.LOOPBACK).device().name()).isEqualTo("tablet");
         assertThat(registry.add("tablet", Listener.NETWORK).device().name()).isEqualTo("tablet-2");
@@ -98,6 +100,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("KEY-1")
     void aNewDeviceHasAFreshRandomKeyAndNoLoginYet() throws IOException {
         NewDevice first = registry.add("laptop", Listener.LOOPBACK);
         NewDevice second = registry.add("laptop", Listener.LOOPBACK);
@@ -116,6 +119,8 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("KEY-4")
+    @Tag("KEY-5")
     void aKeyWorksOnlyOnTheListenerWhereItWasPaired() throws IOException {
         NewDevice local = registry.add("laptop", Listener.LOOPBACK);
         NewDevice remote = registry.add("phone", Listener.NETWORK);
@@ -129,6 +134,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("KEY-6")
     void anUnknownOrMissingKeyDoesNotPass() throws IOException {
         registry.add("laptop", Listener.LOOPBACK);
 
@@ -330,6 +336,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("KEY-3")
     void theFileKeepsOnlyTheHashOfTheKeyAndIsPrivate() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
         Path file = directory.data().resolve("devices.json");
@@ -347,6 +354,7 @@ class DeviceRegistryTest {
     }
 
     @Test
+    @Tag("PAIR-10")
     void theKeyDoesNotLeakThroughToString() throws IOException {
         NewDevice phone = registry.add("phone", Listener.NETWORK);
 

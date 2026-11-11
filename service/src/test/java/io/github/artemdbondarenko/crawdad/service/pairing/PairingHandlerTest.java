@@ -116,6 +116,7 @@ class PairingHandlerTest {
         "none, own",
         "own, evil.example"
     })
+    @Tag("PAIR-7")
     void aForeignPageIsRefusedBeforeTheCodeAndSpendsNoAttempts(String origin, String host) throws Exception {
         Issued issued = codes.issue(null);
         String ownAuthority = authority(loopback);
@@ -159,6 +160,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-8")
+    @Tag("PAIR-10")
     void aWrongCodeIsRefusedAndWarnedAboutWithItsSourceButNotTheCode() throws Exception {
         Issued issued = codes.issue(null);
         String wrong = issued.code().equals("000000") ? "111111" : "000000";
@@ -276,6 +279,9 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-6")
+    @Tag("PAIR-12")
+    @Tag("KEY-2")
     void theRightCodeSetsTheKeyCookieOnLoopback() throws Exception {
         Issued issued = codes.issue(null);
 
@@ -299,6 +305,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-6")
+    @Tag("KEY-2")
     void theRightCodeSetsAHostPrefixedSecureCookieOnTheNetworkAddress() throws Exception {
         Issued issued = codes.issue("phone");
 
@@ -315,6 +323,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-3")
+    @Tag("PAIR-8")
     void aCodeIsExchangedOnlyOnce() throws Exception {
         Issued issued = codes.issue(null);
 
@@ -324,6 +334,7 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-10")
     void logsThePairingWithNameAndAddressButNeitherKeyNorCode() throws Exception {
         Issued issued = codes.issue("phone");
 
@@ -335,6 +346,7 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-9")
     void aRegistryThatCannotSaveFailsThePairingAndUsesUpTheCode() throws Exception {
         Issued issued = codes.issue("phone");
         // The registry writes next to devices.json; without its directory every write fails.
@@ -356,6 +368,36 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-12")
+    void refusalsOfPairAndDeviceAreNotCachedEither() throws Exception {
+        codes.issue(null);
+        String foreign = "https://evil.example";
+
+        List<Answer> refusals = List.of(
+                pair(loopback, "000000"),
+                send(loopback, "POST", "/pair", authority(loopback), foreign, List.of(), body("000000")),
+                send(loopback, "GET", "/device", "evil.example", null, List.of(), null));
+
+        assertThat(refusals).extracting(Answer::status).containsExactly(401, 403, 403);
+        assertThat(refusals).allSatisfy(answer ->
+                assertThat(answer.header("cache-control")).containsExactly("no-store"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @Tag("PAIR-15")
+    @ValueSource(strings = {"text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"})
+    void readsTheBodyAsJsonWhateverItsContentType(String contentType) throws Exception {
+        Issued issued = codes.issue(null);
+
+        Answer paired = send(loopback, "POST", "/pair", authority(loopback), origin(loopback),
+                List.of("Content-Type: " + contentType), body(issued.code()));
+
+        assertThat(paired.status()).isEqualTo(204);
+    }
+
+    @Test
+    @Tag("PAIR-11")
+    @Tag("PAIR-12")
     void otherMethodsAreNotAllowed() throws Exception {
         Answer getPair = send(loopback, "GET", "/pair", null);
         assertThat(getPair.status()).isEqualTo(405);
@@ -393,6 +435,9 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-6")
+    @Tag("KEY-8")
+    @Tag("PAIR-12")
     void theDeviceAnswersWithItsNameAndRenewsTheSameCookie() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         String cookie = "crawdad_device_" + loopback.getLocalPort();
@@ -409,6 +454,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-2")
+    @Tag("KEY-6")
     void theDeviceRenewsTheSecureCookieOnTheNetworkAddress() throws Exception {
         String key = devices.add("phone", Listener.NETWORK).key();
         String cookie = "__Host-crawdad_device_" + network.getLocalPort();
@@ -421,6 +468,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-4")
+    @Tag("KEY-5")
     void aKeyWorksOnlyOnTheAddressItWasPairedOn() throws Exception {
         String loopbackKey = devices.add("laptop", Listener.LOOPBACK).key();
         String networkKey = devices.add("phone", Listener.NETWORK).key();
@@ -433,6 +482,7 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-7")
     void findsTheWorkingKeyAmongSeveralCookiesOfTheSameName() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         String cookie = "crawdad_device_" + loopback.getLocalPort();
@@ -445,6 +495,7 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("PAIR-10")
     void aKeyedDeviceKeepsItsKeyOutOfItsText() throws Exception {
         DeviceRegistry.NewDevice added = devices.add("phone", Listener.LOOPBACK);
 
@@ -454,6 +505,7 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-2")
     void readsTheKeyOnlyFromTheCookieOfThisPort() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
 
@@ -463,6 +515,8 @@ class PairingHandlerTest {
     }
 
     @Test
+    @Tag("KEY-6")
+    @Tag("PAIR-12")
     void anUnknownMissingOrRevokedKeyIsUnauthorizedQuietlyAndKeepsTheCookie() throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         devices.revoke("phone", new ConnectionRegistry());
@@ -485,6 +539,7 @@ class PairingHandlerTest {
         "none, evil.example",
         "none, 127.0.0.1"
     })
+    @Tag("KEY-6")
     void theDeviceRefusesAForeignHostOrASentForeignOrigin(String origin, String host) throws Exception {
         String key = devices.add("phone", Listener.LOOPBACK).key();
         String sentHost = host.equals("own") ? authority(loopback) : host;

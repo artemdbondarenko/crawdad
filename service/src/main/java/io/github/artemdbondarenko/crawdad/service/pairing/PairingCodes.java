@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntSupplier;
 
 /**
  * The one pairing code the service holds, in memory only: six digits from {@link SecureRandom}, valid
@@ -110,6 +111,8 @@ public final class PairingCodes {
 
     private final Clock clock;
     private final Timer timer;
+    /** Draws a number below {@link #BOUND} for the digits of a code. */
+    private final IntSupplier draw;
     private Pending current;
     /** The last code that burned, until a waiter got it or the next code reported it. */
     private PairingOutcome.Burned lastBurned;
@@ -121,8 +124,14 @@ public final class PairingCodes {
     }
 
     PairingCodes(Clock clock, Timer timer) {
+        this(clock, timer, () -> RANDOM.nextInt(BOUND));
+    }
+
+    /** With the digits drawn by {@code draw}, so that a test can repeat a code. */
+    PairingCodes(Clock clock, Timer timer, IntSupplier draw) {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.timer = Objects.requireNonNull(timer, "timer");
+        this.draw = Objects.requireNonNull(draw, "draw");
     }
 
     /**
@@ -138,7 +147,7 @@ public final class PairingCodes {
             // The new code differs from the one it replaces, so the old digits stop working for sure.
             String code;
             do {
-                code = "%06d".formatted(RANDOM.nextInt(BOUND));
+                code = "%06d".formatted(draw.getAsInt());
             } while (replaced != null && code.equals(new String(replaced.code, StandardCharsets.US_ASCII)));
             issued = new Pending(code, clock.instant().plus(TERM), Optional.ofNullable(requestedName));
             current = issued;

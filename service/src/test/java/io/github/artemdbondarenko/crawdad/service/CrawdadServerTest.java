@@ -721,6 +721,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("PAIR-6")
+    @Tag("KEY-6")
     void pairsAndChecksTheDeviceWithTheSecurityHeadersOfThePage() throws Exception {
         PairingCodes codes = new PairingCodes();
         server = CrawdadServer.start(new ServiceConfig("127.0.0.1", 0), "static/", new FakeAgentAdapter(),
@@ -753,6 +755,8 @@ class CrawdadServerTest {
     }
 
     @Test
+    @Tag("PAIR-6")
+    @Tag("KEY-2")
     void pairsOnTheNetworkAddressWithASecureCookieForThePortItListensOn() throws Exception {
         TlsMaterial material = TlsMaterial.read(writeCertificate(ip(NETWORK_HOST)));
         NetworkCertificate files = new NetworkCertificate(material.privateKey(), material.chain(), NETWORK_HOST,

@@ -10,9 +10,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 class PairingCodesTest {
@@ -26,6 +28,8 @@ class PairingCodesTest {
     private final PairingCodes codes = new PairingCodes(clock, timer);
 
     @Test
+    @Tag("PAIR-1")
+    @Tag("PAIR-3")
     void aCodeIsSixDigitsAndWorksUntilFiveMinutesPass() {
         Issued issued = codes.issue(null);
 
@@ -38,6 +42,8 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-3")
+    @Tag("PAIR-8")
     void aCodeEnteredAfterFiveMinutesIsRejectedAndTheWaiterLearnsItExpired() {
         Issued issued = codes.issue(null);
 
@@ -48,6 +54,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-3")
     void theTimerExpiresACodeNobodyEnters() {
         Issued issued = codes.issue(null);
         assertThat(timer.delays).containsExactly(Duration.ofMinutes(5));
@@ -66,6 +73,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-3")
     void aCodePairsOnceAndTheWaiterLearnsWhichDevice() {
         Issued issued = codes.issue("phone");
 
@@ -83,6 +91,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-9")
     void aDeviceThatCouldNotBeSavedFailsTheCodeForGood() {
         Issued issued = codes.issue(null);
         Attempt.Accepted accepted = (Attempt.Accepted) codes.attempt(issued.code(), PHONE);
@@ -119,6 +128,8 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-2")
+    @Tag("PAIR-14")
     void aNewCodeReplacesThePreviousOne() {
         Issued first = codes.issue(null);
         Issued second = codes.issue(null);
@@ -131,6 +142,21 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-14")
+    void aNewCodeIsDrawnAgainWhenItWouldRepeatTheOneItEnds() {
+        Iterator<Integer> draws = List.of(123456, 123456, 123456, 654321).iterator();
+        PairingCodes repeating = new PairingCodes(clock, timer, draws::next);
+
+        Issued first = repeating.issue(null);
+        Issued second = repeating.issue(null);
+
+        assertThat(first.code()).isEqualTo("123456");
+        assertThat(second.code()).isEqualTo("654321");
+        assertThat(repeating.attempt("123456", PHONE)).isInstanceOf(Attempt.Rejected.class);
+    }
+
+    @Test
+    @Tag("PAIR-4")
     void fiveWrongAttemptsFromTwoAddressesBurnTheCode() {
         Issued issued = codes.issue(null);
         String wrong = wrong(issued.code());
@@ -199,6 +225,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-4")
     void fourWrongAttemptsAndThenTheRightCodePair() {
         Issued issued = codes.issue(null);
         for (int i = 0; i < 4; i++) {
@@ -211,12 +238,14 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-5")
     void withoutACodeEveryAttemptIsRejected() {
         assertThat(codes.attempt("123456", PHONE)).isInstanceOf(Attempt.Rejected.class);
         assertThat(codes.attempt("", PHONE)).isInstanceOf(Attempt.Rejected.class);
     }
 
     @Test
+    @Tag("PAIR-8")
     void anInputOfAnotherLengthIsAWrongAttempt() {
         Issued issued = codes.issue(null);
 
@@ -226,6 +255,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-10")
     void theCodeStaysOutOfTextRepresentations() {
         Issued issued = codes.issue("phone");
         Attempt accepted = codes.attempt(issued.code(), PHONE);
@@ -236,6 +266,7 @@ class PairingCodesTest {
     }
 
     @Test
+    @Tag("PAIR-1")
     void theDefaultInstanceIssuesRandomCodesOnTheSystemClock() throws Exception {
         PairingCodes system = new PairingCodes();
         List<String> issued = new ArrayList<>();

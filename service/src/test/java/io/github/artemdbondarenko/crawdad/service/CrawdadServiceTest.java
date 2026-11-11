@@ -43,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -76,6 +77,7 @@ class CrawdadServiceTest {
     }
 
     @Test
+    @Tag("PAIR-6")
     void theServicePairsADeviceThroughItsControlSocket() throws Exception {
         server = run("--port", "0");
         Path socket = data().runtime().resolve(ControlSocket.FILE_NAME);
@@ -104,6 +106,37 @@ class CrawdadServiceTest {
         try (SocketChannel devices = SocketChannel.open(UnixDomainSocketAddress.of(socket))) {
             assertThat(line(send(devices, "{\"op\":\"devices\"}"))).startsWith("{\"devices\":[{\"name\":\"laptop\",");
         }
+    }
+
+    @Test
+    @Tag("PAIR-13")
+    void aCodeIsKeptInMemoryOnlyAndARestartEndsIt() throws Exception {
+        server = run("--port", "0");
+        String code;
+        try (SocketChannel pair = SocketChannel.open(
+                UnixDomainSocketAddress.of(data().runtime().resolve(ControlSocket.FILE_NAME)))) {
+            Matcher issued = CODE.matcher(line(send(pair, "{\"op\":\"pair\"}")));
+            assertThat(issued.matches()).isTrue();
+            code = issued.group(1);
+
+            // No file of the service holds the code while it is valid.
+            try (Stream<Path> files = Files.walk(temp)) {
+                for (Path file : files.filter(Files::isRegularFile).toList()) {
+                    assertThat(Files.readString(file, StandardCharsets.ISO_8859_1)).as(file.toString())
+                            .doesNotContain(code);
+                }
+            }
+        }
+
+        server.stop();
+        server = run("--port", "0");
+
+        HttpResponse<String> refused = HTTP.send(HttpRequest.newBuilder(server.address().resolve("/pair"))
+                .header("Origin", "http://" + server.address().getAuthority())
+                .POST(HttpRequest.BodyPublishers.ofString("{\"code\":\"" + code + "\"}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(refused.statusCode()).isEqualTo(401);
+        assertThat(refused.body()).isEqualTo("{\"error\":\"invalid_code\"}");
     }
 
     @Test

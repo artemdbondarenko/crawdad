@@ -326,7 +326,7 @@ describe("ServiceConnection", () => {
 });
 
 describe("ServiceConnection with device keys", () => {
-  it("does nothing until started, then asks GET /device with the cookie before opening the socket", async () => {
+  it("SCREEN-1: does nothing until started, then asks GET /device with the cookie before opening the socket", async () => {
     const { socket, device, connection } = create();
     expect(device.calls).toEqual([]);
 
@@ -389,7 +389,7 @@ describe("ServiceConnection with device keys", () => {
     expect(timers.waiting).toBe(0);
   });
 
-  it("is unpaired and stops when the service does not know the device", async () => {
+  it("SCREEN-1: is unpaired and stops when the service does not know the device", async () => {
     const { socket, device, timers, connection } = create();
     device.answers.push(401);
 
@@ -403,7 +403,7 @@ describe("ServiceConnection with device keys", () => {
     expect(timers.waiting).toBe(0);
   });
 
-  it("can be started again after pairing", async () => {
+  it("SCREEN-4: can be started again after pairing", async () => {
     const { socket, device, connection } = create();
     device.answers.push(401, 200);
     connection.start();
