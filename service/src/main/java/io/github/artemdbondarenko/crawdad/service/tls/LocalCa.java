@@ -451,7 +451,11 @@ public final class LocalCa {
         return new BigInteger(127, RANDOM).setBit(0);
     }
 
-    private static String fingerprint(X509Certificate certificate) {
+    /**
+     * SHA-256 of the DER encoding as colon-separated upper-case hex pairs: the form the service prints at
+     * start and {@code tls export-ca} prints, so the owner can compare the two.
+     */
+    public static String fingerprint(X509Certificate certificate) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(certificate.getEncoded());
             return HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
