@@ -127,6 +127,7 @@ Covers: `LOG-3`.
 | A renewed certificate is not taken | WARNING | certificate file, why | — | `TLS-5` |
 | The certificate expires in less than 14 days | WARNING | certificate file, expiry date | — | `TLS-6` |
 | `XDG_RUNTIME_DIR` does not give the control socket a place | WARNING | where the socket goes instead | — | `FILE-2` |
+| The device registry is missing at start | WARNING | registry file | — | `START-7` |
 | A paired device cannot be saved | ERROR | address, cause | — | `PAIR-9` |
 | A revocation cannot be saved | ERROR | device name, cause | — | `DEV-8` |
 
@@ -134,3 +135,4 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `LOG-2`, `START-7` | A missing device registry is not written to the log. | #49 |
