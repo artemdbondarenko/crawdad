@@ -43,15 +43,30 @@ public record DataDirectory(Path data, Path runtime) {
         Objects.requireNonNull(runtime, "runtime");
     }
 
+    /** The service's lookup: warns when the control socket cannot go under {@code XDG_RUNTIME_DIR}. */
     public static DataDirectory fromEnvironment() {
         return fromEnvironment(System.getenv());
+    }
+
+    /** The commands' lookup: the same directories as {@link #fromEnvironment()}, without its warning. */
+    public static DataDirectory fromEnvironmentQuietly() {
+        return fromEnvironmentQuietly(System.getenv());
+    }
+
+    static DataDirectory fromEnvironment(Map<String, String> environment) {
+        DataDirectory directory = fromEnvironmentQuietly(environment);
+        if (absolute(environment.get("XDG_RUNTIME_DIR")) == null) {
+            LOG.log(Level.WARNING, "XDG_RUNTIME_DIR is not set; the control socket goes to "
+                    + LogText.safe(directory.runtime().toString()));
+        }
+        return directory;
     }
 
     /**
      * Resolves the directories by the XDG Base Directory specification: empty or relative values are
      * ignored. Without {@code XDG_RUNTIME_DIR} the socket goes to {@code run} inside the data directory.
      */
-    static DataDirectory fromEnvironment(Map<String, String> environment) {
+    static DataDirectory fromEnvironmentQuietly(Map<String, String> environment) {
         Path dataHome = absolute(environment.get("XDG_DATA_HOME"));
         if (dataHome == null) {
             Path home = absolute(environment.get("HOME"));
@@ -64,12 +79,7 @@ public record DataDirectory(Path data, Path runtime) {
         }
         Path data = dataHome.resolve("crawdad");
         Path runtimeHome = absolute(environment.get("XDG_RUNTIME_DIR"));
-        if (runtimeHome == null) {
-            Path fallback = data.resolve("run");
-            LOG.log(Level.WARNING, "XDG_RUNTIME_DIR is not set; the control socket goes to " + LogText.safe(fallback.toString()));
-            return new DataDirectory(data, fallback);
-        }
-        return new DataDirectory(data, runtimeHome.resolve("crawdad"));
+        return new DataDirectory(data, runtimeHome == null ? data.resolve("run") : runtimeHome.resolve("crawdad"));
     }
 
     private static Path absolute(String value) {

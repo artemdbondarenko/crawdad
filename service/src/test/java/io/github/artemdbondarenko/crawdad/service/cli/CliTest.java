@@ -17,7 +17,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.lang.System.Logger.Level;
 import java.net.StandardProtocolFamily;
 import java.net.URI;
 import java.net.UnixDomainSocketAddress;
@@ -37,11 +36,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -562,41 +557,6 @@ class CliTest {
 
         assertThat(err()).startsWith(root + " is not a readable certificate");
         assertThat(out()).isEmpty();
-    }
-
-    @Test
-    @Tag("FILE-2")
-    void theDataDirectoryIsFoundWithoutTheWarningOfTheService() {
-        Logger directoryLog = Logger.getLogger(DataDirectory.class.getName());
-        List<LogRecord> records = new CopyOnWriteArrayList<>();
-        Handler collect = new Handler() {
-            @Override
-            public void publish(LogRecord record) {
-                records.add(record);
-            }
-
-            @Override
-            public void flush() {}
-
-            @Override
-            public void close() {}
-        };
-        directoryLog.addHandler(collect);
-        try {
-            // Stands for DataDirectory.fromEnvironment without XDG_RUNTIME_DIR, which warns on this logger.
-            DataDirectory found = Cli.dataDirectory(() -> {
-                System.getLogger(DataDirectory.class.getName()).log(Level.WARNING, "XDG_RUNTIME_DIR is not set");
-                return data;
-            });
-
-            assertThat(found).isEqualTo(data);
-            assertThat(records).isEmpty();
-            // The service, in another process, warns as before; here the level is back once the lookup is done.
-            System.getLogger(DataDirectory.class.getName()).log(Level.WARNING, "after");
-            assertThat(records).hasSize(1);
-        } finally {
-            directoryLog.removeHandler(collect);
-        }
     }
 
     private int run(String... args) {

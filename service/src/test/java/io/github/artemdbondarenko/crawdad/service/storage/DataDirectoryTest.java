@@ -12,7 +12,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -73,27 +73,9 @@ class DataDirectoryTest {
     @Tag("FILE-2")
     @Tag("LOG-2")
     void fallsBackToADirectoryInsideTheDataDirectoryWithoutXdgRuntimeDir() {
-        List<LogRecord> logged = new CopyOnWriteArrayList<>();
-        Handler collect = new Handler() {
-            @Override
-            public void publish(LogRecord record) {
-                logged.add(record);
-            }
-
-            @Override
-            public void flush() {}
-
-            @Override
-            public void close() {}
-        };
-        Logger log = Logger.getLogger(DataDirectory.class.getName());
-        log.addHandler(collect);
-        DataDirectory directory;
-        try {
-            directory = DataDirectory.fromEnvironment(Map.of("XDG_DATA_HOME", temp.resolve("data").toString()));
-        } finally {
-            log.removeHandler(collect);
-        }
+        List<LogRecord> logged = new ArrayList<>();
+        DataDirectory directory = collectingLog(logged,
+                () -> DataDirectory.fromEnvironment(Map.of("XDG_DATA_HOME", temp.resolve("data").toString())));
 
         assertThat(directory.runtime()).isEqualTo(temp.resolve("data/crawdad/run"));
         // The XDG specification asks for a warning when the runtime directory is replaced.
@@ -101,6 +83,23 @@ class DataDirectoryTest {
             assertThat(record.getLevel()).isEqualTo(Level.WARNING);
             assertThat(record.getMessage()).contains("XDG_RUNTIME_DIR").contains(directory.runtime().toString());
         });
+    }
+
+    @Test
+    @Tag("FILE-2")
+    void theCommandsFindTheSameDirectoriesWithoutTheWarning() {
+        List<Map<String, String>> environments = List.of(
+                Map.of("XDG_DATA_HOME", temp.resolve("data").toString()),
+                Map.of("HOME", temp.resolve("home").toString(), "XDG_RUNTIME_DIR", "relative/run"),
+                Map.of("HOME", temp.resolve("home").toString(), "XDG_RUNTIME_DIR", temp.resolve("run").toString()));
+
+        for (Map<String, String> environment : environments) {
+            List<LogRecord> logged = new ArrayList<>();
+            DataDirectory quiet = collectingLog(logged, () -> DataDirectory.fromEnvironmentQuietly(environment));
+
+            assertThat(logged).as(environment.toString()).isEmpty();
+            assertThat(quiet).as(environment.toString()).isEqualTo(DataDirectory.fromEnvironment(environment));
+        }
     }
 
     @Test
@@ -193,6 +192,29 @@ class DataDirectoryTest {
 
         assertThat(Files.readString(file)).isEqualTo("old");
         assertThat(listWithPermissions(temp)).containsExactly("devices.json rw-------");
+    }
+
+    /** Runs the lookup while collecting what it logs on the logger of {@link DataDirectory}. */
+    private static DataDirectory collectingLog(List<LogRecord> logged, Supplier<DataDirectory> lookup) {
+        Handler collect = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                logged.add(record);
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+        };
+        Logger log = Logger.getLogger(DataDirectory.class.getName());
+        log.addHandler(collect);
+        try {
+            return lookup.get();
+        } finally {
+            log.removeHandler(collect);
+        }
     }
 
     private static String permissions(Path path) throws IOException {

@@ -19,18 +19,13 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -83,22 +78,6 @@ public final class Cli {
     /** Whether {@code args} name a command; anything else is the options of the service itself. */
     public static boolean handles(String[] args) {
         return args.length > 0 && COMMANDS.contains(args[0]);
-    }
-
-    /**
-     * Finds the data directory the way the service does, but without its warning about a missing
-     * {@code XDG_RUNTIME_DIR}: the service has already told the owner where its socket is.
-     */
-    public static DataDirectory dataDirectory(Supplier<DataDirectory> lookup) {
-        // DataDirectory logs through System.Logger, which goes to java.util.logging under the same name.
-        Logger logger = Logger.getLogger(DataDirectory.class.getName());
-        Level before = logger.getLevel();
-        logger.setLevel(Level.OFF);
-        try {
-            return lookup.get();
-        } finally {
-            logger.setLevel(before);
-        }
     }
 
     /**
@@ -321,8 +300,7 @@ public final class Cli {
             String body = Base64.getMimeEncoder(64, new byte[] {'\n'}).encodeToString(der);
             out.print("-----BEGIN CERTIFICATE-----\n" + body + "\n-----END CERTIFICATE-----\n");
             out.flush();
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(der);
-            err.println("SHA-256 fingerprint: " + HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest));
+            err.println("SHA-256 fingerprint: " + LocalCa.fingerprint(root));
             return DONE;
         } catch (NoSuchFileException e) {
             err.println("No root certificate yet: start Crawdad with --host <private address> and without"
