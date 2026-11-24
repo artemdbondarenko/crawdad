@@ -84,7 +84,9 @@ jar, with the service running. There is no `crawdad` wrapper yet:
   [remote-access.md](remote-access.md#with-the-services-own-root).
 
 When the service is not running, the commands say so, with the command to start it, and exit with 1.
-Wrong arguments exit with 2.
+When the control socket is there but cannot be reached, for example for its permissions, they say
+that instead. Every failure is one line on the error output with no stack trace and exit code 1;
+wrong arguments exit with 2 ([specs/owner-commands.md](../specs/owner-commands.md)).
 
 ### Files
 

@@ -50,7 +50,7 @@ public final class CrawdadService {
 
     public static void main(String[] args) throws Exception {
         if (Cli.handles(args)) {
-            System.exit(Cli.run(args, DataDirectory.fromEnvironmentQuietly(), startCommand(), System.out,
+            System.exit(Cli.run(args, DataDirectory::fromEnvironmentQuietly, startCommand(), System.out,
                     System.err));
         }
         // Every entry on one line, with no stack trace, from the first one on (LOG-3).

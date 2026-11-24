@@ -11,6 +11,7 @@ import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes;
 import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodes.Attempt;
 import io.github.artemdbondarenko.crawdad.service.pairing.PairingCodesFixture;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
+import io.github.artemdbondarenko.crawdad.service.storage.DataDirectoryFixture;
 import io.github.artemdbondarenko.crawdad.service.tls.LocalCa;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -131,17 +132,74 @@ class CliTest {
     }
 
     @Test
-    @Tag("CMD-3")
-    void aSocketThisUserMayNotOpenCountsAsNotRunning() {
+    @Tag("CMD-9")
+    @Tag("CMD-10")
+    void aSocketInADirectoryClosedToTheOwnerIsNotTakenForAServiceThatIsNotRunning() {
+        Path path = data.runtime().resolve(ControlSocket.FILE_NAME);
         try {
             setPermissions(data.runtime(), "---------");
+            org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(data.runtime()), "the test runs as root");
 
             assertThat(run("devices")).isEqualTo(1);
         } finally {
             setPermissions(data.runtime(), "rwx------");
         }
 
-        assertThat(err()).isEqualTo(NOT_RUNNING + System.lineSeparator());
+        assertThat(err()).isEqualTo(lines("Cannot reach the control socket " + path + ": permission denied"));
+        assertThat(out()).isEmpty();
+    }
+
+    @Test
+    @Tag("CMD-9")
+    void aSocketClosedToTheOwnerIsNotTakenForAServiceThatIsNotRunning() {
+        Path path = data.runtime().resolve(ControlSocket.FILE_NAME);
+        try {
+            setPermissions(path, "---------");
+            org.junit.jupiter.api.Assumptions.assumeFalse(Files.isWritable(path), "the test runs as root");
+
+            assertThat(run("pair")).isEqualTo(1);
+        } finally {
+            setPermissions(path, "rw-------");
+        }
+
+        assertThat(err()).isEqualTo(lines("Cannot reach the control socket " + path + ": permission denied"));
+        assertThat(out()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pair", "devices", "revoke phone", "tls export-ca"})
+    @Tag("FILE-1")
+    @Tag("CMD-10")
+    void withoutAPlaceForTheFilesEveryCommandSaysWhyInOneLine(String command) {
+        int exit = Cli.run(command.split(" "), DataDirectoryFixture::withoutHome, START_COMMAND, out, err);
+
+        assertThat(exit).isEqualTo(1);
+        assertThat(err()).contains("XDG_DATA_HOME").contains("HOME").doesNotContain("\tat ").hasLineCount(1);
+        assertThat(out()).isEmpty();
+    }
+
+    @Test
+    @Tag("CMD-1")
+    void wrongArgumentsAreToldBeforeTheFilesAreLookedFor() {
+        int exit = Cli.run(new String[] {"devices", "--everything"}, DataDirectoryFixture::withoutHome,
+                START_COMMAND, out, err);
+
+        assertThat(exit).isEqualTo(2);
+        assertThat(err()).startsWith("Usage: ");
+    }
+
+    @Test
+    @Tag("CMD-10")
+    @Tag("LOG-3")
+    void aFailureNoRuleNamesIsOneLineWithItsCauses() {
+        int exit = Cli.run(new String[] {"devices"}, () -> {
+            throw new IllegalStateException("broken" + ESC + "[2J", new IOException("disk"));
+        }, START_COMMAND, out, err);
+
+        assertThat(exit).isEqualTo(1);
+        assertThat(err()).isEqualTo(lines("crawdad devices failed: java.lang.IllegalStateException: broken\\x1B[2J;"
+                + " caused by: java.io.IOException: disk"));
+        assertThat(out()).isEmpty();
     }
 
     @Test
@@ -556,6 +614,20 @@ class CliTest {
         assertThat(run("tls", "export-ca")).isEqualTo(1);
 
         assertThat(err()).startsWith(root + " is not a readable certificate");
+        assertThat(out()).isEmpty();
+    }
+
+    @Test
+    @Tag("CA-5")
+    void exportCaOfARootThatCannotBeReadSaysWhy() throws Exception {
+        Path root = Files.createDirectories(data.data().resolve(LocalCa.DIRECTORY)).resolve(LocalCa.CERTIFICATE_FILE);
+        Files.writeString(root, "not read");
+        setPermissions(root, "---------");
+        org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(root), "the test runs as root");
+
+        assertThat(run("tls", "export-ca")).isEqualTo(1);
+
+        assertThat(err()).isEqualTo(lines(root + " cannot be read: permission denied"));
         assertThat(out()).isEmpty();
     }
 

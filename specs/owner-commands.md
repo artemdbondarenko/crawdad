@@ -498,6 +498,3 @@ both ends ship in the same program.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `FILE-1`, `CMD-10` | When neither `XDG_DATA_HOME` nor `HOME` gives an absolute path, every command ends with a stack trace. | #52 |
-| `CMD-9` | A control socket the command cannot connect to, such as one in a directory closed to the owner, is told as `Crawdad is not running` with the hint to start it. | #52 |
-| `CMD-10` | A failure the command does not catch, such as a `RuntimeException`, ends with a stack trace. | #52 |

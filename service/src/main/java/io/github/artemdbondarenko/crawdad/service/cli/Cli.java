@@ -3,6 +3,7 @@ package io.github.artemdbondarenko.crawdad.service.cli;
 import io.github.artemdbondarenko.crawdad.service.control.ControlSocket;
 import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory;
+import io.github.artemdbondarenko.crawdad.service.storage.DataDirectory.NoDataHomeException;
 import io.github.artemdbondarenko.crawdad.service.tls.LocalCa;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -10,12 +11,15 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.net.ConnectException;
 import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
@@ -26,6 +30,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -61,15 +66,27 @@ public final class Cli {
         }
     }
 
-    private final Path socket;
-    private final Path data;
+    /**
+     * The control socket is there but the command cannot connect to it, for a reason other than nothing
+     * listening ({@code CMD-9}): a service may run, so starting one is not the hint.
+     */
+    private static final class UnreachableSocketException extends Exception {
+
+        private static final long serialVersionUID = 1L;
+
+        UnreachableSocketException(Path socket, String reason) {
+            super("Cannot reach the control socket " + LogText.escape(socket.toString()) + ": " + reason);
+        }
+    }
+
+    private final Supplier<DataDirectory> lookup;
     private final String startCommand;
     private final PrintStream out;
     private final PrintStream err;
+    private DataDirectory directory;
 
-    private Cli(DataDirectory data, String startCommand, PrintStream out, PrintStream err) {
-        this.socket = data.runtime().resolve(ControlSocket.FILE_NAME);
-        this.data = data.data();
+    private Cli(Supplier<DataDirectory> lookup, String startCommand, PrintStream out, PrintStream err) {
+        this.lookup = lookup;
         this.startCommand = startCommand;
         this.out = out;
         this.err = err;
@@ -85,9 +102,22 @@ public final class Cli {
      * {@code startCommand} is how the owner starts the service, for the hint when it is not running.
      */
     public static int run(String[] args, DataDirectory data, String startCommand, PrintStream out, PrintStream err) {
+        return run(args, () -> data, startCommand, out, err);
+    }
+
+    /**
+     * As {@link #run(String[], DataDirectory, String, PrintStream, PrintStream)}, but looks the files up only
+     * when the command needs them, so that wrong arguments are told before a missing home ({@code CMD-1}).
+     */
+    public static int run(String[] args, Supplier<DataDirectory> data, String startCommand, PrintStream out,
+            PrintStream err) {
         return new Cli(data, startCommand, out, err).run(List.of(args));
     }
 
+    /**
+     * Runs the command; however it fails, the owner reads why in one line on the error output, with no stack
+     * trace ({@code CMD-10}). A failure no rule names is told with its causes: the commands have no log.
+     */
     private int run(List<String> args) {
         List<String> options = args.subList(1, args.size());
         try {
@@ -98,10 +128,25 @@ public final class Cli {
                 case "tls" -> options.equals(List.of("export-ca")) ? exportCa() : usage();
                 default -> usage();
             };
-        } catch (UnexpectedAnswerException e) {
+        } catch (UnexpectedAnswerException | UnreachableSocketException | NoDataHomeException e) {
             err.println(e.getMessage());
             return FAILED;
+        } catch (RuntimeException e) {
+            err.println("crawdad " + LogText.safe(String.join(" ", args)) + " failed: " + LogText.cause(e));
+            return FAILED;
         }
+    }
+
+    /** The files of the service, looked up once, when a command first needs them ({@code FILE-1}). */
+    private DataDirectory directory() {
+        if (directory == null) {
+            directory = lookup.get();
+        }
+        return directory;
+    }
+
+    private Path socket() {
+        return directory().runtime().resolve(ControlSocket.FILE_NAME);
     }
 
     private int usage() {
@@ -109,7 +154,7 @@ public final class Cli {
         return USAGE;
     }
 
-    private int pairCommand(List<String> options) throws UnexpectedAnswerException {
+    private int pairCommand(List<String> options) throws UnexpectedAnswerException, UnreachableSocketException {
         if (options.isEmpty()) {
             return pair(null);
         }
@@ -119,7 +164,7 @@ public final class Cli {
         return usage();
     }
 
-    private int devicesCommand(List<String> options) throws UnexpectedAnswerException {
+    private int devicesCommand(List<String> options) throws UnexpectedAnswerException, UnreachableSocketException {
         if (options.isEmpty()) {
             return devices(false);
         }
@@ -133,7 +178,7 @@ public final class Cli {
      * Asks for a code, prints it with the links and, with a network address, a QR code, then waits for how
      * it ends. The request side stays open while waiting: the socket takes its end as Ctrl+C.
      */
-    private int pair(String name) throws UnexpectedAnswerException {
+    private int pair(String name) throws UnexpectedAnswerException, UnreachableSocketException {
         ObjectNode request = request("pair");
         if (name != null) {
             request.put("name", name);
@@ -213,7 +258,7 @@ public final class Cli {
         return FAILED;
     }
 
-    private int devices(boolean all) throws UnexpectedAnswerException {
+    private int devices(boolean all) throws UnexpectedAnswerException, UnreachableSocketException {
         ObjectNode request = request("devices");
         request.put("all", all);
         JsonNode answer;
@@ -253,7 +298,7 @@ public final class Cli {
         return DONE;
     }
 
-    private int revoke(String name) throws UnexpectedAnswerException {
+    private int revoke(String name) throws UnexpectedAnswerException, UnreachableSocketException {
         ObjectNode request = request("revoke");
         request.put("name", name);
         JsonNode answer;
@@ -290,7 +335,7 @@ public final class Cli {
 
     /** Prints the service's own root as PEM and its fingerprint on stderr; reads the file, not the service. */
     private int exportCa() {
-        Path file = data.resolve(LocalCa.DIRECTORY).resolve(LocalCa.CERTIFICATE_FILE);
+        Path file = directory().data().resolve(LocalCa.DIRECTORY).resolve(LocalCa.CERTIFICATE_FILE);
         X509Certificate root;
         try {
             byte[] content = Files.readAllBytes(file);
@@ -305,8 +350,11 @@ public final class Cli {
         } catch (NoSuchFileException e) {
             err.println("No root certificate yet: start Crawdad with --host <private address> and without"
                     + " --tls-cert and --tls-key to create it.");
+        } catch (AccessDeniedException e) {
+            err.println(LogText.escape(file.toString()) + " cannot be read: permission denied");
         } catch (IOException | GeneralSecurityException | ClassCastException e) {
-            err.println(file + " is not a readable certificate: " + LogText.safe(e.getMessage()));
+            err.println(LogText.escape(file.toString()) + " is not a readable certificate: "
+                    + LogText.safe(String.valueOf(e.getMessage())));
         }
         return FAILED;
     }
@@ -326,12 +374,26 @@ public final class Cli {
         return FAILED;
     }
 
-    /** A connection to the socket, or {@code null} when nothing accepts there: no file, refused, not allowed. */
-    private Connection connect() {
+    /**
+     * A connection to the socket, or {@code null} when nothing accepts there: no file, or nobody listens on it
+     * ({@code CMD-3}). Any other reason, such as a directory closed to the owner, is not a service that is not
+     * running ({@code CMD-9}). The operating system's words are in the language of the system and do not tell
+     * the cases apart, so the file tells them.
+     */
+    private Connection connect() throws UnreachableSocketException {
+        Path socket = socket();
         try {
             return new Connection(SocketChannel.open(UnixDomainSocketAddress.of(socket)));
-        } catch (IOException e) {
+        } catch (ConnectException e) {
             return null;
+        } catch (IOException e) {
+            if (Files.notExists(socket, LinkOption.NOFOLLOW_LINKS)) {
+                return null;
+            }
+            boolean known = Files.exists(socket, LinkOption.NOFOLLOW_LINKS);
+            String reason = !known || !Files.isWritable(socket) ? "permission denied"
+                    : LogText.safe(String.valueOf(e.getMessage()));
+            throw new UnreachableSocketException(socket, reason);
         }
     }
 
