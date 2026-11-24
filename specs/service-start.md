@@ -156,3 +156,4 @@ adapter.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `START-3` | `--agent` is not an option of the service, and a start without it is not refused. | the pull request that follows this one |

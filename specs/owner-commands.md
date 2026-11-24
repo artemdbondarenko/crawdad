@@ -499,3 +499,4 @@ both ends ship in the same program.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `CMD-3` | The way to start the service it prints has no `--agent <name>`. | the pull request that follows this one |
