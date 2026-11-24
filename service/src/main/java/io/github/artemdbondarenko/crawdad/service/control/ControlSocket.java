@@ -23,6 +23,8 @@ import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
@@ -158,9 +160,16 @@ public final class ControlSocket implements Closeable {
         Objects.requireNonNull(connections, "connections");
         Objects.requireNonNull(requestTimeout, "requestTimeout");
         Objects.requireNonNull(peers, "peers");
-        Path path = DataDirectory.createPrivateDirectory(runtimeDirectory).resolve(FILE_NAME);
-        Files.deleteIfExists(path);
-        ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+        Path path = runtimeDirectory.resolve(FILE_NAME);
+        requireShortEnough(path);
+        ServerSocketChannel server;
+        try {
+            DataDirectory.createPrivateDirectory(runtimeDirectory);
+            Files.deleteIfExists(path);
+            server = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+        } catch (IOException e) {
+            throw new CannotOpenException(path, e);
+        }
         try {
             // bind creates the socket with the mode the mask leaves; no chmod afterwards, no moment wider than 0600.
             Umask.during(Umask.OWNER_READ_WRITE, () -> server.bind(UnixDomainSocketAddress.of(path)));
@@ -170,7 +179,57 @@ public final class ControlSocket implements Closeable {
         } catch (IOException | RuntimeException e) {
             server.close();
             Files.deleteIfExists(path);
+            if (e instanceof IOException io) {
+                throw new CannotOpenException(path, io);
+            }
             throw e;
+        }
+    }
+
+    /** The control socket cannot be opened, so the service does not start ({@code CMD-6}). */
+    public static class CannotOpenException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+
+        CannotOpenException(Path path, IOException cause) {
+            super("Cannot open the control socket " + LogText.safe(path.toString()) + ": " + LogText.cause(cause),
+                    cause);
+        }
+
+        CannotOpenException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * The control socket path is longer than the operating system allows for a socket ({@code START-6}). The
+     * path comes from {@code XDG_RUNTIME_DIR}, so a shorter one fixes it.
+     */
+    public static final class SocketPathTooLongException extends CannotOpenException {
+
+        private static final long serialVersionUID = 1L;
+
+        SocketPathTooLongException(Path path, int length) {
+            super("The path of the control socket is too long for the operating system (" + length + " bytes, at most "
+                    + MAX_PATH_BYTES + "): " + LogText.escape(path.toString())
+                    + "; set XDG_RUNTIME_DIR to a shorter directory");
+        }
+    }
+
+    /**
+     * The longest socket path in bytes: {@code sun_path} holds 108 bytes on Linux and 104 on macOS and the BSDs,
+     * the last one for the terminating zero.
+     */
+    static final int MAX_PATH_BYTES = System.getProperty("os.name", "").startsWith("Linux") ? 107 : 103;
+
+    /** Tells a path too long by its length instead of the bind failure the JDK reports for it. */
+    private static void requireShortEnough(Path path) throws SocketPathTooLongException {
+        String encoding = System.getProperty("sun.jnu.encoding");
+        Charset charset = encoding != null && Charset.isSupported(encoding) ? Charset.forName(encoding)
+                : StandardCharsets.UTF_8;
+        int length = path.toString().getBytes(charset).length;
+        if (length > MAX_PATH_BYTES) {
+            throw new SocketPathTooLongException(path, length);
         }
     }
 

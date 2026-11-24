@@ -64,11 +64,44 @@ class ServiceConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"--port", "--port abc", "--port -1", "--port 65536", "--host", "--verbose x", "--tls-cert"})
-    void rejectsInvalidArguments(String args) {
+    @ValueSource(strings = {"--port", "--port abc", "--port -1", "--port 65536", "--port 1.5", "--host", "--verbose x",
+            "--tls-cert", "--port 8461 --port 8462", "--host --port 8461", "8461"})
+    @Tag("START-3")
+    void refusesArgumentsThatAreNotItsOptions(String args) {
         String[] split = args.split(" ");
 
-        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, split)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, split))
+                .isInstanceOf(ServiceConfig.WrongOptionException.class);
+    }
+
+    @Test
+    @Tag("START-3")
+    void namesTheOptionThatIsWrong() {
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--prot", "8461"))
+                .hasMessageStartingWith("--prot is not an option of the service");
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--port"))
+                .hasMessage("--port needs a value");
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--port", "eighty"))
+                .hasMessage("--port must be a whole number from 0 to 65535, not eighty");
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", "10.1.2.3", "--host", "10.1.2.4"))
+                .hasMessage("--host is given more than once; give it once");
+    }
+
+    @Test
+    @Tag("START-3")
+    void aValueThatStartsWithDashesButIsNoOptionIsTaken() {
+        ServiceConfig config = ServiceConfig.fromArgs(LITERALS, "--host", "100.64.0.1", "--tls-cert", "--box.crt",
+                "--tls-key", "--box.key");
+
+        assertThat(config.tls()).contains(new ServiceConfig.TlsFiles(Path.of("--box.crt"), Path.of("--box.key")));
+    }
+
+    @Test
+    @Tag("START-3")
+    @Tag("LOG-3")
+    void anArgumentIsShownOnOneLine() {
+        assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--x\n--y", "1"))
+                .hasMessageStartingWith("--x\\x0A--y is not an option");
     }
 
     @ParameterizedTest
@@ -207,10 +240,12 @@ class ServiceConfigTest {
     @ParameterizedTest
     @ValueSource(strings = {"--tls-cert", "--tls-key"})
     @Tag("TLS-2")
+    @Tag("START-3")
     void rejectsOnlyOneCertificatePath(String option) {
         // Half a configuration must not silently fall back to the service's own certificate.
         assertThatThrownBy(() -> ServiceConfig.fromArgs(LITERALS, "--host", "100.64.0.1", option, "/certs/x"))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(ServiceConfig.WrongOptionException.class)
                 .hasMessageContaining("--tls-cert")
                 .hasMessageContaining("--tls-key")
                 .hasMessageContaining("both or neither");

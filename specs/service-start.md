@@ -148,11 +148,3 @@ anything else and a running service before the device registry and the root cert
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `START-1`, `START-6` | A control socket path that is too long ends the start with a stack trace. | #49 |
-| `START-1`, `START-7` | A device registry that cannot be read or has an unknown version ends the start with a stack trace. | #49 |
-| `START-1`, `FILE-1` | When neither `XDG_DATA_HOME` nor `HOME` gives an absolute path, the start ends with a stack trace. | #49 |
-| `START-2` | A refused start leaves what it created: the directory of the socket and the lock file in it, the data directory, and the root certificate when it fails after creating it. | #49 |
-| `START-7` | A missing device registry is not written to the log. | #49 |
-| `START-3` | Wrong options exit with code `1`, not `2`. An option given twice is taken: the last value wins. | #49 |
-| `START-4`, `START-5` | The line gives the operating system's own reason, in the language of the system, such as `Cannot listen on 192.168.77.77:8460: Cannot assign requested address`, instead of saying that the address is not of this machine or that the port is in use. | #49 |
-| `START-8` | Any other failure ends the start with a stack trace and writes nothing to the log. | #49 |

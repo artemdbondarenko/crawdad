@@ -29,7 +29,10 @@ public final class LogText {
         return kept < value.length() ? escaped + "…(+" + (value.length() - kept) + ")" : escaped;
     }
 
-    /** As {@link #safe}, but whole: for a line written by a library, whose values cannot be told apart. */
+    /**
+     * As {@link #safe}, but whole: for a line written by a library, whose values cannot be told apart, and for a
+     * path the owner must see in full to fix a refused start.
+     */
     public static String escape(String value) {
         if (value == null) {
             return "null";

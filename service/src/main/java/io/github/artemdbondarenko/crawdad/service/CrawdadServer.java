@@ -21,7 +21,14 @@ import io.github.artemdbondarenko.crawdad.service.tls.TlsMaterial.UnusableFileEx
 import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.net.Socket;
+import java.net.SocketException;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -266,17 +273,44 @@ public final class CrawdadServer {
         return crawdad;
     }
 
-    /** An address the server cannot listen on, such as a port in use or an address of another machine. */
+    /**
+     * An address the server cannot listen on. The operating system's own reason is in the language of the system
+     * and does not tell a port in use from an address of another machine, so the service finds out which it is
+     * ({@code START-4}, {@code START-5}); any other reason is not the owner's to fix and keeps the system's words.
+     */
     public static final class CannotListenException extends IOException {
 
-        CannotListenException(String message, Throwable cause) {
+        private static final long serialVersionUID = 1L;
+
+        /** Why the address cannot be listened on. */
+        public enum Reason {
+            /** No interface of this machine has the address ({@code START-4}). */
+            NOT_AN_ADDRESS_OF_THIS_MACHINE,
+            /** Another program listens on the port ({@code START-5}). */
+            PORT_IN_USE,
+            /** Anything else, told in the system's words ({@code START-8}). */
+            OTHER
+        }
+
+        private final Reason reason;
+
+        CannotListenException(String message, Reason reason, Throwable cause) {
             super(message, cause);
+            this.reason = reason;
+        }
+
+        public Reason reason() {
+            return reason;
         }
     }
 
+    /** How long a probe of a port in use waits for the program that listens on it. */
+    private static final int PORT_PROBE_MILLIS = 500;
+
     /**
      * Binds every connector before the server starts, so that a port in use or a foreign address is told
-     * by its address; the ones bound before a failure are closed again.
+     * by its address; the ones bound before a failure are closed again. Another port is never tried instead
+     * ({@code START-5}): the owner's devices know this one.
      */
     private static void openConnectors(Server server) throws CannotListenException {
         for (Connector connector : server.getConnectors()) {
@@ -284,14 +318,83 @@ public final class CrawdadServer {
             try {
                 bound.open();
             } catch (IOException e) {
-                Throwable reason = e.getCause() == null ? e : e.getCause();
-                CannotListenException cannot = new CannotListenException("Cannot listen on " + bound.getHost() + ":"
-                        + bound.getPort() + ": " + reason.getMessage(), e);
                 for (Connector other : server.getConnectors()) {
                     ((ServerConnector) other).close();
                 }
-                throw cannot;
+                throw cannotListen(bound.getHost(), bound.getPort(), e);
             }
+        }
+    }
+
+    /**
+     * The IPv4 address the network connector listens on: a name of {@code --host} can resolve to an IPv6 address
+     * first, which the service does not serve ({@code NET-3}). The options have checked that one exists.
+     */
+    private static String ipv4Of(String host) throws UnknownHostException {
+        for (InetAddress address : InetAddress.getAllByName(host)) {
+            if (address instanceof Inet4Address) {
+                return address.getHostAddress();
+            }
+        }
+        throw new UnknownHostException(host + " has no IPv4 address");
+    }
+
+    /** The first port a user who is not root may listen on, by default; Linux tells its own value. */
+    private static final int FIRST_UNPRIVILEGED_PORT = 1024;
+
+    private static final Path UNPRIVILEGED_PORT_START = Path.of("/proc/sys/net/ipv4/ip_unprivileged_port_start");
+
+    private static CannotListenException cannotListen(String host, int port, IOException failure) {
+        String where = "Cannot listen on " + host + ":" + port + ": ";
+        InetAddress address;
+        try {
+            address = InetAddress.getByName(host);
+        } catch (UnknownHostException e) {
+            address = null;
+        }
+        if (address != null && !isOfThisMachine(address)) {
+            return new CannotListenException(where + host + " is not an address of this machine; check that the "
+                    + "network it belongs to, such as a VPN, is up",
+                    CannotListenException.Reason.NOT_AN_ADDRESS_OF_THIS_MACHINE, failure);
+        }
+        // The address is this machine's, so the port is what fails: taken, unless it needs privileges.
+        if (address != null && port != 0 && (listensThere(address, port) || port >= firstUnprivilegedPort())) {
+            return new CannotListenException(where + "the port is in use; stop the program that uses it or start "
+                    + "with --port <number>", CannotListenException.Reason.PORT_IN_USE, failure);
+        }
+        Throwable reason = failure.getCause() == null ? failure : failure.getCause();
+        return new CannotListenException(where + LogText.safe(String.valueOf(reason.getMessage())),
+                CannotListenException.Reason.OTHER, failure);
+    }
+
+    /** Below this port a user who is not root cannot listen, so a failure there may be for privileges. */
+    private static int firstUnprivilegedPort() {
+        try {
+            return Integer.parseInt(Files.readString(UNPRIVILEGED_PORT_START).strip());
+        } catch (IOException | NumberFormatException e) {
+            return FIRST_UNPRIVILEGED_PORT;
+        }
+    }
+
+    private static boolean isOfThisMachine(InetAddress address) {
+        if (address.isLoopbackAddress()) {
+            return true;
+        }
+        try {
+            return NetworkInterface.getByInetAddress(address) != null;
+        } catch (SocketException e) {
+            // Without the list of interfaces the address is taken as this machine's; the reason is then the system's.
+            return true;
+        }
+    }
+
+    /** Whether a program accepts connections on the port, which tells it is taken even below the free ports. */
+    private static boolean listensThere(InetAddress address, int port) {
+        try (Socket probe = new Socket()) {
+            probe.connect(new InetSocketAddress(address, port), PORT_PROBE_MILLIS);
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 
@@ -325,7 +428,7 @@ public final class CrawdadServer {
         https.addCustomizer(new ServerNameCheck());
         ServerConnector connector = new ServerConnector(server,
                 new SslConnectionFactory(tls, HttpVersion.HTTP_1_1.asString()), new HttpConnectionFactory(https));
-        connector.setHost(config.host());
+        connector.setHost(ipv4Of(config.host()));
         connector.setPort(config.port());
         connector.setIdleTimeout(NETWORK_IDLE_TIMEOUT.toMillis());
         server.addConnector(connector);
