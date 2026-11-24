@@ -1,6 +1,7 @@
 # ADR-0003: Agent adapters use Claude Code's programmatic mode with API keys
 
-- **Status:** Accepted; decision 3 superseded by [ADR-0005](0005-license-policy.md)
+- **Status:** Accepted; decision 1 superseded by [ADR-0007](0007-owner-sign-in.md), decision 3 by
+  [ADR-0005](0005-license-policy.md)
 - **Date:** 2026-10-26
 - **Supersedes:** rules 2, 4 and 8 of [ADR-0001](0001-legal-ground-rules.md)
 

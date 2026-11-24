@@ -60,8 +60,13 @@ Crawdad runs the Claude Code installed on your machine. It does not include Clau
 
 - Install Claude Code by following
   [Anthropic's official instructions](https://code.claude.com/docs/en/overview).
-- Sign in to Claude Code with your own Claude account. Crawdad never sees, stores or passes on
-  your credentials.
+- Sign in to Claude Code yourself: with your own Claude subscription, an API key or a cloud
+  provider. Crawdad runs Claude Code under that sign-in and never sees, stores or passes on your
+  credentials ([ADR-0007](docs/adr/0007-owner-sign-in.md)).
+- Using a subscription through Crawdad is your decision under your own agreement with Anthropic:
+  Anthropic does not say whether its terms permit a subscription in Claude Code's programmatic mode,
+  which Crawdad uses. An API key is always an option. If `ANTHROPIC_API_KEY` is set where Crawdad
+  runs, Claude Code uses it even when you are signed in with a subscription.
 
 The minimum supported version of Claude Code will be stated here once there is something to run.
 
