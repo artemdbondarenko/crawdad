@@ -70,8 +70,9 @@ the same pull request.
 - [Pairing and the device key](pairing.md) — pairing a browser with a one-time code; the device
   key in a cookie; the device check; the pairing screen of the client.
 - [Owner's commands](owner-commands.md) — how the owner's commands reach the service and who may use
-  them; one service per OS user; where the service keeps its files; getting a pairing code with
-  `crawdad pair`; listing and revoking devices; exporting the service's own root certificate.
+  them; one service per OS user; how a command fails; where the service keeps its files; getting a
+  pairing code with `crawdad pair`; listing and revoking devices; exporting the service's own root
+  certificate.
 - [Starting the service](service-start.md) — how the service refuses to start: one line that says
   why, the exit code, no stack trace, no address listened on, nothing left behind on disk.
 - [The service log](service-log.md) — which events the service writes, at which level and with what

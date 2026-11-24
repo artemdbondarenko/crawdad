@@ -6,7 +6,8 @@ command reaches the running service, who may use the commands, that one OS user 
 where the service keeps its files, how the owner gets a pairing code, lists and revokes devices,
 and exports the root certificate.
 
-Areas of this file: `CMD` (reaching the service, who may use the commands, one service per OS user),
+Areas of this file: `CMD` (reaching the service, who may use the commands, one service per OS user,
+how a command fails),
 `FILE` (the files of the service), `PAIRCMD` (`crawdad pair`), `DEV` (`crawdad devices` and
 `crawdad revoke`), `CA` (`crawdad tls export-ca`).
 
@@ -35,6 +36,9 @@ install yet: the program is the service's jar, run with `java -jar <path to the 
 - **Wrong attempts the owner never hears of.** A code burned by wrong attempts is reported with the
   addresses they came from — to the waiting `crawdad pair`, or, when nobody waited, to the next one
   (`PAIRCMD-3`, `PAIRCMD-5`).
+- **A reason lost in a stack trace.** A command that fails says why in one line on its error output
+  (`CMD-10`), and a socket the command cannot reach is not taken for a service that is not running
+  (`CMD-9`), so the owner is never told to start a service that runs already.
 
 Not protected against:
 
@@ -112,6 +116,26 @@ Covers: `CMD-8`.
 1. The service is killed with `kill -9`; its control socket is left on disk.
 2. The owner starts the service again. It starts as usual and takes over the control socket.
 3. `crawdad devices` reaches the new service.
+
+### S-CMD-5. A control socket the command cannot reach
+
+Covers: `CMD-9`, `CMD-10`.
+
+1. The service is running. The owner has taken away their own access to the directory of the
+   socket by mistake, with `chmod 000 /run/user/1000/crawdad`, and runs `crawdad devices`.
+2. The command prints one line to its error output that it cannot reach the control socket, with the
+   path and the reason, and exits with code `1`. It does not say that Crawdad is not running, and
+   does not suggest starting it.
+
+### S-CMD-6. No place for the files
+
+Covers: `FILE-1`, `CMD-10`.
+
+1. The owner runs `crawdad devices` from a cron job whose environment sets neither `XDG_DATA_HOME`
+   nor `HOME`.
+2. The command prints one line to its error output that neither `XDG_DATA_HOME` nor `HOME` is set to
+   an absolute path, and exits with code `1`. It prints no stack trace and nothing on its standard
+   output.
 
 ### S-FILE-1. The files after pairing
 
@@ -332,11 +356,26 @@ Covers: `CA-5`.
 - **CMD-8.** However the service stopped, including a crash, the next start MUST succeed; a control
   socket left on disk MUST be replaced. A service that stops normally MUST delete its control socket.
 
+### How a command fails
+
+- **CMD-9.** When the command cannot connect to the control socket for a reason other than those of
+  `CMD-3` — the directory or the socket is closed to the owner, say — the command MUST say that
+  it cannot reach the control socket, with the path and the reason, and exit with code `1`. It MUST
+  NOT say that Crawdad is not running or how to start it.
+- **CMD-10.** A command that fails MUST say why in one line on its error output and MUST NOT print a
+  stack trace. Before the command has printed anything of its own, it MUST print nothing on its
+  standard output; what it printed before the failure, such as the code of `crawdad pair`, stays. It
+  MUST exit with code `1`, unless a rule of this file gives the failure another code (`CMD-1`,
+  `PAIRCMD-3`, `PAIRCMD-4`). For a failure no rule of this file names, the line MUST say which
+  command failed and give the failure with its causes, written as [`LOG-3`](service-log.md) says:
+  the commands have no log to point at.
+
 ### Files of the service
 
 - **FILE-1.** The service MUST keep its data in `$XDG_DATA_HOME/crawdad/`, or in
   `$HOME/.local/share/crawdad/` when `XDG_DATA_HOME` is not set, empty or not an absolute path. When
-  neither gives an absolute path, the service MUST refuse to start and say why.
+  neither gives an absolute path, the service MUST refuse to start and say why, and a command MUST
+  say why and exit with code `1` (`CMD-10`).
 - **FILE-2.** The control socket MUST be `$XDG_RUNTIME_DIR/crawdad/control.sock`. When
   `XDG_RUNTIME_DIR` is not set, empty or not an absolute path, the socket MUST be in the `run/`
   directory inside the data directory, and the service MUST write a warning to its log. The
@@ -459,3 +498,6 @@ both ends ship in the same program.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `FILE-1`, `CMD-10` | When neither `XDG_DATA_HOME` nor `HOME` gives an absolute path, every command ends with a stack trace. | #52 |
+| `CMD-9` | A control socket the command cannot connect to, such as one in a directory closed to the owner, is told as `Crawdad is not running` with the hint to start it. | #52 |
+| `CMD-10` | A failure the command does not catch, such as a `RuntimeException`, ends with a stack trace. | #52 |
