@@ -38,6 +38,17 @@ public record DataDirectory(Path data, Path runtime) {
         void writeTo(OutputStream out) throws IOException;
     }
 
+    /** Neither {@code XDG_DATA_HOME} nor {@code HOME} gives an absolute path ({@code FILE-1}). */
+    public static final class NoDataHomeException extends IllegalStateException {
+
+        private static final long serialVersionUID = 1L;
+
+        NoDataHomeException() {
+            super("Cannot find where to keep the service data: neither XDG_DATA_HOME nor HOME is set to an"
+                    + " absolute path; set one of them");
+        }
+    }
+
     public DataDirectory {
         Objects.requireNonNull(data, "data");
         Objects.requireNonNull(runtime, "runtime");
@@ -71,9 +82,7 @@ public record DataDirectory(Path data, Path runtime) {
         if (dataHome == null) {
             Path home = absolute(environment.get("HOME"));
             if (home == null) {
-                throw new IllegalStateException(
-                        "Cannot find where to keep the service data: neither XDG_DATA_HOME nor HOME"
-                                + " is set to an absolute path");
+                throw new NoDataHomeException();
             }
             dataHome = home.resolve(".local/share");
         }

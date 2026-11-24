@@ -68,6 +68,8 @@ class DeviceRegistryTest {
         log.addHandler(collect);
         directory = new DataDirectory(temp.resolve("data"), temp.resolve("run"));
         registry = DeviceRegistry.open(directory, clock);
+        // The warning of the missing file; the tests look at what comes after.
+        records.clear();
     }
 
     @AfterEach
@@ -392,23 +394,75 @@ class DeviceRegistryTest {
     }
 
     @Test
-    void refusesAFileOfAnUnknownVersion() throws IOException {
+    @Tag("START-7")
+    @Tag("LOG-2")
+    void aMissingRegistryIsNoDevicesAndAWarningThatNamesTheFile() throws IOException {
+        Path file = directory.data().resolve("devices.json");
+
+        DeviceRegistry opened = DeviceRegistry.open(directory, clock);
+
+        assertThat(opened.devices(true)).isEmpty();
+        assertThat(file).doesNotExist();
+        assertThat(records).singleElement().satisfies(record -> {
+            assertThat(record.getLevel()).isEqualTo(java.util.logging.Level.WARNING);
+            assertThat(record.getMessage()).isEqualTo("No device registry at " + file + "; no device is paired");
+        });
+    }
+
+    @Test
+    @Tag("START-7")
+    void aRegistryOfANewerVersionIsToldAsSuchAndLeftAsItIs() throws IOException {
         Path file = directory.data().resolve("devices.json");
         Files.writeString(file, "{\"version\":2,\"devices\":[]}");
 
         assertThatThrownBy(() -> DeviceRegistry.open(directory, clock))
-                .isInstanceOf(IOException.class)
-                .hasMessageContaining(file.toString());
+                .isInstanceOf(DeviceRegistry.UnusableRegistryException.class)
+                .hasMessage("The device registry " + file + " was written by a newer version of Crawdad (format "
+                        + "version 2); start that version; the file is left as it is");
+        assertThat(file).hasContent("{\"version\":2,\"devices\":[]}");
     }
 
     @Test
-    void refusesAFileThatIsNotJson() throws IOException {
+    @Tag("START-7")
+    void aRegistryOfAnOlderUnknownVersionIsToldAsSuch() throws IOException {
         Path file = directory.data().resolve("devices.json");
-        Files.writeString(file, "not json");
+        Files.writeString(file, "{\"version\":0,\"devices\":[]}");
 
         assertThatThrownBy(() -> DeviceRegistry.open(directory, clock))
-                .isInstanceOf(IOException.class)
-                .hasMessageContaining(file.toString());
+                .isInstanceOf(DeviceRegistry.UnusableRegistryException.class)
+                .hasMessageContaining("has a format version this service does not know: 0");
+    }
+
+    @Test
+    @Tag("START-7")
+    void aFileThatIsNotARegistryIsToldAsSuch() throws IOException {
+        Path file = directory.data().resolve("devices.json");
+        for (String content : List.of("not json", "{\"version\":1}", "{\"devices\":[]}", "{}")) {
+            Files.writeString(file, content);
+
+            assertThatThrownBy(() -> DeviceRegistry.open(directory, clock))
+                    .isInstanceOf(DeviceRegistry.UnusableRegistryException.class)
+                    .hasMessage("The device registry " + file + " is not a device registry; the file is left as it is");
+            assertThat(file).hasContent(content);
+        }
+    }
+
+    @Test
+    @Tag("START-7")
+    void aRegistryThatCannotBeReadIsToldAsSuch() throws IOException {
+        Path file = directory.data().resolve("devices.json");
+        Files.writeString(file, "{\"version\":1,\"devices\":[]}");
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("---------"));
+        try {
+            org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(file), "the test runs as root");
+
+            assertThatThrownBy(() -> DeviceRegistry.open(directory, clock))
+                    .isInstanceOf(DeviceRegistry.UnusableRegistryException.class)
+                    .hasMessage("The device registry " + file + " cannot be read: permission denied; the file is "
+                            + "left as it is");
+        } finally {
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+        }
     }
 
     /**

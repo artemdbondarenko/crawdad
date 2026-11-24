@@ -135,4 +135,3 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `LOG-2`, `START-7` | A missing device registry is not written to the log. | #49 |

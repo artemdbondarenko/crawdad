@@ -52,8 +52,10 @@ Options:
   those from `tailscale cert`. Both or neither; they need `--host`. Without them the service issues
   its own certificate.
 
-A wrong option, an unusable certificate or a second instance stops the start with a one-line
-message and exit code 1. Remote access step by step: [remote-access.md](remote-access.md).
+Every refused start is one line on the error output, with no stack trace and nothing left on disk:
+exit code 2 for a wrong option, 1 for anything else, such as an unusable certificate, a port in use
+or a second instance ([specs/service-start.md](../specs/service-start.md)). Remote access step by
+step: [remote-access.md](remote-access.md).
 
 ### Pair a device
 

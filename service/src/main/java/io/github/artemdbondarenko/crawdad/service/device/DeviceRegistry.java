@@ -7,7 +7,9 @@ import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -71,7 +73,7 @@ public final class DeviceRegistry {
         record AlreadyRevoked(Instant revokedAt) implements RevokeResult {}
     }
 
-    private record FileContent(int version, List<Device> devices) {}
+    private record FileContent(Integer version, List<Device> devices) {}
 
     private final Path file;
     private final Clock clock;
@@ -83,21 +85,56 @@ public final class DeviceRegistry {
         this.devices = devices;
     }
 
-    /** Reads the registry from the data directory, creating the directory 0700 if needed. */
+    /**
+     * A registry file the service cannot use: unreadable, not a registry, or of a format version it does not
+     * know. The file is left as it is, and the start is refused rather than run with no devices ({@code START-7}).
+     */
+    public static final class UnusableRegistryException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+
+        UnusableRegistryException(Path file, String problem, Throwable cause) {
+            super("The device registry " + LogText.escape(file.toString()) + " " + problem
+                    + "; the file is left as it is", cause);
+        }
+    }
+
+    /**
+     * Reads the registry from the data directory, creating the directory 0700 if needed. A missing file is a
+     * registry with no devices, told in the log, since a file deleted or moved by mistake unpairs every device
+     * ({@code START-7}).
+     */
     public static DeviceRegistry open(DataDirectory directory, Clock clock) throws IOException {
         Objects.requireNonNull(clock, "clock");
         Path file = DataDirectory.createPrivateDirectory(directory.data()).resolve(FILE_NAME);
-        if (!Files.exists(file)) {
+        if (Files.notExists(file, LinkOption.NOFOLLOW_LINKS)) {
+            LOG.log(Level.WARNING, "No device registry at " + LogText.safe(file.toString())
+                    + "; no device is paired");
             return new DeviceRegistry(file, clock, List.of());
+        }
+        byte[] bytes;
+        try {
+            bytes = Files.readAllBytes(file);
+        } catch (IOException e) {
+            throw new UnusableRegistryException(file, "cannot be read: "
+                    + (e instanceof AccessDeniedException ? "permission denied" : LogText.safe(String.valueOf(e))), e);
         }
         FileContent content;
         try {
-            content = JSON.readValue(Files.readAllBytes(file), FileContent.class);
+            content = JSON.readValue(bytes, FileContent.class);
         } catch (JacksonException e) {
-            throw new IOException("Cannot read " + file + ": not a device registry", e);
+            throw new UnusableRegistryException(file, "is not a device registry", e);
         }
-        if (content.version() != VERSION || content.devices() == null) {
-            throw new IOException("Cannot read " + file + ": unsupported version " + content.version());
+        if (content.version() == null || content.devices() == null) {
+            throw new UnusableRegistryException(file, "is not a device registry", null);
+        }
+        if (content.version() > VERSION) {
+            throw new UnusableRegistryException(file, "was written by a newer version of Crawdad (format version "
+                    + content.version() + "); start that version", null);
+        }
+        if (content.version() != VERSION) {
+            throw new UnusableRegistryException(file, "has a format version this service does not know: "
+                    + content.version(), null);
         }
         return new DeviceRegistry(file, clock, List.copyOf(content.devices()));
     }
