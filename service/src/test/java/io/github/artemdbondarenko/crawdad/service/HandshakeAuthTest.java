@@ -3,8 +3,8 @@ package io.github.artemdbondarenko.crawdad.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.artemdbondarenko.crawdad.service.CrawdadServer.NetworkCertificate;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent;
+import io.github.artemdbondarenko.crawdad.adapter.AgentAdapter;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent;
 import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
 import io.github.artemdbondarenko.crawdad.service.device.Device;
@@ -414,6 +414,11 @@ class HandshakeAuthTest {
 
     /** The real fake adapter, counting how often a session was started or a message sent. */
     private static final class CountingAdapter implements AgentAdapter {
+
+        @Override
+        public boolean executesRepositoryConfiguration() {
+            return false;
+        }
 
         private final AgentAdapter delegate = new FakeAgentAdapter();
         final AtomicInteger calls = new AtomicInteger();

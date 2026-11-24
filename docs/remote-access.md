@@ -50,7 +50,7 @@ received this way can be used by that someone.
 4. Find the Tailscale address of the machine with `tailscale ip -4`. Start the service on it:
 
    ```sh
-   $CRAWDAD --host <tailscale IPv4> --tls-cert <dir>/<machine>.crt --tls-key <dir>/<machine>.key
+   $CRAWDAD --agent fake --host <tailscale IPv4> --tls-cert <dir>/<machine>.crt --tls-key <dir>/<machine>.key
    ```
 
    The service prints the network address by name: `https://<machine>.<tailnet>.ts.net:8460/`.
@@ -99,7 +99,7 @@ Use this when Tailscale is not an option, for example on a home Wi-Fi network.
 1. Start the service on the private address of the machine:
 
    ```sh
-   $CRAWDAD --host <private address>
+   $CRAWDAD --agent fake --host <private address>
    ```
 
    The first start creates the root in `$XDG_DATA_HOME/crawdad/tls/` (`ca.crt` and `ca.key`). The root

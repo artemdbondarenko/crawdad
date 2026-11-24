@@ -212,4 +212,3 @@ the contract; `./mvnw install` puts it into the local Maven repository.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `ADAPTER-1`–`ADAPTER-11` | The service has no `--agent` and no folder of adapters: it always starts with the built-in fake agent, and the adapter interface lives inside the service, not in `adapter-api`. | the pull request that follows this one |

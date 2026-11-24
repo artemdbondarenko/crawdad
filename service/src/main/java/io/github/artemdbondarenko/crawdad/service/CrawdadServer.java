@@ -1,6 +1,6 @@
 package io.github.artemdbondarenko.crawdad.service;
 
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
+import io.github.artemdbondarenko.crawdad.adapter.AgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
 import io.github.artemdbondarenko.crawdad.service.device.Device;
@@ -203,7 +203,7 @@ public final class CrawdadServer {
         this.heartbeat = heartbeat;
     }
 
-    /** Starts the server with the {@link FakeAgentAdapter}, the only adapter so far, and a throwaway registry. */
+    /** Starts the server with the built-in {@link FakeAgentAdapter} and a throwaway registry. */
     static CrawdadServer start(ServiceConfig config, String staticRoot) throws Exception {
         return start(config, staticRoot, new FakeAgentAdapter());
     }

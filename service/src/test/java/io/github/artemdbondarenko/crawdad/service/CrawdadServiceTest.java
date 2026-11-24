@@ -462,8 +462,58 @@ class CrawdadServiceTest {
 
     @Test
     @Tag("CMD-3")
-    void theStartHintNamesThisJar() {
-        assertThat(CrawdadService.startCommand()).startsWith("java -jar /");
+    void theStartHintNamesThisJarAndLeavesTheAdapterToTheOwner() {
+        assertThat(CrawdadService.startCommand()).startsWith("java -jar /").endsWith(" --agent <name>")
+                .doesNotContain("--agent fake");
+    }
+
+    @Test
+    @Tag("ADAPTER-1")
+    @Tag("START-1")
+    @Tag("START-3")
+    void aStartWithoutAgentExitsWithCodeTwoAndCreatesNothing() {
+        Refusal refusal = refusalOf(this::data, "--port", "0");
+
+        assertThat(refusal.exitCode()).isEqualTo(2);
+        assertThat(refusal.error()).isEqualTo("--agent is missing: name the agent adapter to talk to, such as "
+                + "--agent fake" + System.lineSeparator());
+        assertThat(refusal.output()).isEmpty();
+        assertThat(temp).isEmptyDirectory();
+    }
+
+    @Test
+    @Tag("ADAPTER-5")
+    @Tag("START-1")
+    @Tag("START-2")
+    void anAdapterThatIsNotThereIsSaidInOneLineAndLeavesNothingBehind() {
+        Refusal refusal = refusalOf(this::data, "--agent", "ecko", "--port", "0");
+
+        assertThat(refusal.exitCode()).isEqualTo(1);
+        assertThat(refusal.error()).isEqualTo("No agent adapter is named ecko; the adapters are: fake (built in)"
+                + System.lineSeparator());
+        assertThat(refusal.output()).isEmpty();
+        assertThat(temp).isEmptyDirectory();
+    }
+
+    @Test
+    @Tag("ADAPTER-10")
+    @Tag("LOG-2")
+    void theChosenAdapterIsWrittenToTheLog() throws Exception {
+        List<LogRecord> logged = new CopyOnWriteArrayList<>();
+        Handler collect = collectInto(logged);
+        java.util.logging.Logger log = java.util.logging.Logger.getLogger(CrawdadService.class.getName());
+        log.addHandler(collect);
+        try {
+            server = run("--port", "0");
+        } finally {
+            log.removeHandler(collect);
+        }
+
+        assertThat(logged).anySatisfy(record -> {
+            assertThat(record.getLevel()).isEqualTo(java.util.logging.Level.INFO);
+            assertThat(record.getMessage()).isEqualTo(
+                    "Agent adapter: fake, built in, does not execute configuration found in the repository");
+        });
     }
 
     /** A self-signed certificate for {@link #NETWORK_HOST}; nothing in the test connects over TLS. */
@@ -494,7 +544,13 @@ class CrawdadServiceTest {
         return refusal(() -> data, args);
     }
 
+    /** A start with {@code --agent fake} in front of {@code args}, which every start needs ({@code ADAPTER-1}). */
     private Refusal refusal(Supplier<DataDirectory> data, String... args) {
+        return refusalOf(data, withAgent(args));
+    }
+
+    /** A start with exactly {@code args}. */
+    private Refusal refusalOf(Supplier<DataDirectory> data, String... args) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         CrawdadService.Start start = CrawdadService.start(args, data,
@@ -546,8 +602,16 @@ class CrawdadServiceTest {
     }
 
     private CrawdadServer run(String... args) throws Exception {
-        return CrawdadService.run(args, data(), new PrintStream(new ByteArrayOutputStream(), true,
+        return CrawdadService.run(withAgent(args), data(), new PrintStream(new ByteArrayOutputStream(), true,
                 StandardCharsets.UTF_8));
+    }
+
+    static String[] withAgent(String... args) {
+        String[] all = new String[args.length + 2];
+        all[0] = "--agent";
+        all[1] = "fake";
+        System.arraycopy(args, 0, all, 2, args.length);
+        return all;
     }
 
     /** A data directory of the test, so that no test touches the owner's real one. */

@@ -1,7 +1,7 @@
-package io.github.artemdbondarenko.crawdad.service.adapter;
+package io.github.artemdbondarenko.crawdad.adapter;
 
 /**
- * One event of an agent's answer, in the order of Claude Code's stream-json: a {@link Start}, zero
+ * One event of an agent's answer, in this order: a {@link Start}, zero
  * or more {@link Delta} parts and an {@link End}, all with the same message id.
  */
 public sealed interface AgentEvent {

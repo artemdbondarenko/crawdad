@@ -23,6 +23,11 @@
       <groupId>io.github.artemdbondarenko.crawdad</groupId>
       <artifactId>crawdad-protocol</artifactId>
     </dependency>
+    <!-- What agent adapters are built against; also on the class loader of every adapter jar (ADR-0007). -->
+    <dependency>
+      <groupId>io.github.artemdbondarenko.crawdad</groupId>
+      <artifactId>crawdad-adapter-api</artifactId>
+    </dependency>
     <!-- Only to build the clients first: their files go into this jar. Not a dependency at run time. -->
     <dependency>
       <groupId>io.github.artemdbondarenko.crawdad</groupId>

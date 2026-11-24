@@ -9,8 +9,8 @@ import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.AgentMessageE
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.AgentMessageStart;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.SessionStarted;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.UserMessage;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent;
+import io.github.artemdbondarenko.crawdad.adapter.AgentAdapter;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -164,6 +164,11 @@ class ClientConnectionTest {
 
     /** Answers every message with the same two parts, or throws {@link #failure}; remembers what it was asked. */
     private static final class StubAdapter implements AgentAdapter {
+
+        @Override
+        public boolean executesRepositoryConfiguration() {
+            return false;
+        }
 
         int sessionsStarted;
         final List<String> texts = new ArrayList<>();
