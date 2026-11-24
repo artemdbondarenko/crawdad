@@ -866,7 +866,7 @@ class CrawdadServerTest {
         log.addHandler(collect);
         try {
             CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(new FakeAgentAdapter(),
-                    new ConnectionRegistry(), "device-1");
+                    new ConnectionRegistry(), "device-1", Schedulers.idle(), CrawdadServer.Heartbeat.DEFAULT);
 
             // A paired client chooses the close reason: a forged line and a terminal colour.
             endpoint.onWebSocketClose(1000, "\nINFO: Device paired: attacker \u001b[31mFAKE",

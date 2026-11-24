@@ -29,6 +29,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.eclipse.jetty.http.HttpField;
@@ -66,8 +68,10 @@ import org.eclipse.jetty.util.Callback;
 import org.eclipse.jetty.util.component.LifeCycle;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.resource.ResourceFactory;
+import org.eclipse.jetty.util.thread.Scheduler;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.server.ServerUpgradeRequest;
 import org.eclipse.jetty.websocket.server.ServerUpgradeResponse;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeHandler;
@@ -93,6 +97,31 @@ public final class CrawdadServer {
     static final Duration NETWORK_IDLE_TIMEOUT = Duration.ofSeconds(30);
 
     private static final Logger LOG = System.getLogger(CrawdadServer.class.getName());
+
+    /**
+     * How the service keeps a WebSocket alive: a ping every {@code pingInterval} (MSG-12), and a close once
+     * nothing has come from the client — no message, ping or pong — for {@code idleTimeout} (MSG-13).
+     */
+    record Heartbeat(Duration pingInterval, Duration idleTimeout) {
+
+        /** The intervals of the specification. */
+        static final Heartbeat DEFAULT = new Heartbeat(Duration.ofSeconds(30), Duration.ofSeconds(90));
+
+        Heartbeat {
+            if (!pingInterval.isPositive() || idleTimeout.compareTo(pingInterval) <= 0) {
+                throw new IllegalArgumentException("Pings every " + pingInterval + " cannot keep alive a connection"
+                        + " closed after " + idleTimeout);
+            }
+        }
+
+        /**
+         * Jetty's own idle timeout of a WebSocket, only a backstop: the service's pings reset it whether or
+         * not the client answers, so the close after {@link #idleTimeout} of silence is the service's own.
+         */
+        Duration jettyIdleTimeout() {
+            return idleTimeout.plus(pingInterval);
+        }
+    }
 
     /**
      * The certificate the network address presents, the server certificate first; the name the address
@@ -160,16 +189,18 @@ public final class CrawdadServer {
     private final AgentAdapter adapter;
     private final DeviceRegistry devices;
     private final ConnectionRegistry connections;
+    private final Heartbeat heartbeat;
     private final WarningAggregator refusals = new WarningAggregator(LOG);
 
     private CrawdadServer(Server server, ServerConnector loopback, Network network, AgentAdapter adapter,
-            DeviceRegistry devices, ConnectionRegistry connections) {
+            DeviceRegistry devices, ConnectionRegistry connections, Heartbeat heartbeat) {
         this.server = server;
         this.loopback = loopback;
         this.network = network;
         this.adapter = adapter;
         this.devices = devices;
         this.connections = connections;
+        this.heartbeat = heartbeat;
     }
 
     /** Starts the server with the {@link FakeAgentAdapter}, the only adapter so far, and a throwaway registry. */
@@ -227,6 +258,14 @@ public final class CrawdadServer {
     static CrawdadServer start(ServiceConfig config, String staticRoot, AgentAdapter adapter,
             Optional<NetworkCertificate> certificate, DeviceRegistry devices, ConnectionRegistry connections,
             PairingCodes codes) throws Exception {
+        return start(config, staticRoot, adapter, certificate, devices, connections, codes, Heartbeat.DEFAULT);
+    }
+
+    /** As {@link #start(ServiceConfig, String, AgentAdapter, Optional, DeviceRegistry, ConnectionRegistry,
+     * PairingCodes)}, keeping WebSockets alive with {@code heartbeat}; tests shorten its intervals. */
+    static CrawdadServer start(ServiceConfig config, String staticRoot, AgentAdapter adapter,
+            Optional<NetworkCertificate> certificate, DeviceRegistry devices, ConnectionRegistry connections,
+            PairingCodes codes, Heartbeat heartbeat) throws Exception {
         boolean hasNetworkAddress = !config.host().equals(ServiceConfig.DEFAULT_HOST);
         if (hasNetworkAddress != certificate.isPresent()) {
             throw new IllegalArgumentException(hasNetworkAddress
@@ -242,7 +281,8 @@ public final class CrawdadServer {
         if (certificate.isPresent()) {
             network = addNetwork(server, config, certificate.get());
         }
-        CrawdadServer crawdad = new CrawdadServer(server, loopback, network, adapter, devices, connections);
+        CrawdadServer crawdad = new CrawdadServer(server, loopback, network, adapter, devices, connections,
+                heartbeat);
 
         ResourceHandler files = new ResourceHandler();
         Resource root = ResourceFactory.of(files).newClassLoaderResource(staticRoot);
@@ -255,6 +295,7 @@ public final class CrawdadServer {
 
         WebSocketUpgradeHandler webSocket = WebSocketUpgradeHandler.from(server, container -> {
             container.setMaxTextMessageSize(MAX_TEXT_MESSAGE_SIZE);
+            container.setIdleTimeout(heartbeat.jettyIdleTimeout());
             container.addMapping(WEBSOCKET_PATH, crawdad::createWebSocket);
         });
         // Pairing answers carry the security headers of the page too.
@@ -451,6 +492,16 @@ public final class CrawdadServer {
         return Optional.ofNullable(network).map(n -> Duration.ofMillis(n.connector().getIdleTimeout()));
     }
 
+    /** How WebSockets are kept alive. */
+    Heartbeat heartbeat() {
+        return heartbeat;
+    }
+
+    /** Jetty's own idle timeout of a WebSocket, a backstop behind {@link Heartbeat#idleTimeout}. */
+    Duration webSocketIdleTimeout() {
+        return ((WebSocketUpgradeHandler) server.getHandler()).getServerWebSocketContainer().getIdleTimeout();
+    }
+
     /** The TLS context of the network address, for reloading a renewed certificate. */
     Optional<SslContextFactory.Server> networkTls() {
         return Optional.ofNullable(network).map(Network::tls);
@@ -513,7 +564,7 @@ public final class CrawdadServer {
             if (found.isPresent()) {
                 device = found.get().device();
                 recordLogin(device, address, request.getHeaders().get(HttpHeader.USER_AGENT));
-                endpoint = new Endpoint(adapter, connections, device.id());
+                endpoint = new Endpoint(adapter, connections, device.id(), server.getScheduler(), heartbeat);
                 connections.register(device.id(), endpoint);
             }
         }
@@ -565,8 +616,9 @@ public final class CrawdadServer {
     }
 
     /**
-     * Jetty's listener for one accepted WebSocket; hands frames to a {@link ClientConnection}. Public
-     * because Jetty calls the listener methods only on a public class.
+     * Jetty's listener for one accepted WebSocket; hands frames to a {@link ClientConnection}, pings the
+     * client and closes the connection once the client has been silent too long, as {@link Heartbeat} says.
+     * Public because Jetty calls the listener methods only on a public class.
      */
     public static final class Endpoint implements Session.Listener.AutoDemanding, ConnectionRegistry.Connection {
 
@@ -576,15 +628,25 @@ public final class CrawdadServer {
         private final AgentAdapter adapter;
         private final ConnectionRegistry connections;
         private final String deviceId;
-        /** Null until open; guarded by {@code this}, like {@link #pendingClose}. */
+        private final Scheduler scheduler;
+        private final Heartbeat heartbeat;
+        /** Null until open; guarded by {@code this}, like the fields up to {@link #idleCheck}. */
         private Session session;
         private PendingClose pendingClose;
+        private boolean ended;
+        private Scheduler.Task nextPing;
+        private Scheduler.Task idleCheck;
+        /** {@link System#nanoTime()} when the last frame came from the client. */
+        private volatile long lastHeard;
         private ClientConnection connection;
 
-        Endpoint(AgentAdapter adapter, ConnectionRegistry connections, String deviceId) {
+        Endpoint(AgentAdapter adapter, ConnectionRegistry connections, String deviceId, Scheduler scheduler,
+                Heartbeat heartbeat) {
             this.adapter = adapter;
             this.connections = connections;
             this.deviceId = deviceId;
+            this.scheduler = scheduler;
+            this.heartbeat = heartbeat;
         }
 
         @Override
@@ -597,6 +659,10 @@ public final class CrawdadServer {
                             org.eclipse.jetty.websocket.api.Callback.NOOP);
                     return;
                 }
+                lastHeard = System.nanoTime();
+                nextPing = scheduler.schedule(this::ping, heartbeat.pingInterval().toNanos(), TimeUnit.NANOSECONDS);
+                idleCheck = scheduler.schedule(this::checkIdle, heartbeat.idleTimeout().toNanos(),
+                        TimeUnit.NANOSECONDS);
             }
             connection = new ClientConnection(adapter, text -> session.sendText(text,
                     org.eclipse.jetty.websocket.api.Callback.from(() -> {}, Endpoint::logSendFailure)));
@@ -618,11 +684,91 @@ public final class CrawdadServer {
 
         @Override
         public void onWebSocketText(String text) {
+            heard();
             connection.receive(text);
+        }
+
+        /** Not a message of the protocol, but traffic all the same. */
+        @Override
+        public void onWebSocketBinary(ByteBuffer payload, org.eclipse.jetty.websocket.api.Callback callback) {
+            heard();
+            callback.succeed();
+        }
+
+        /** Overriding this turns off Jetty's automatic answer, so the pong is sent here. */
+        @Override
+        public void onWebSocketPing(ByteBuffer payload) {
+            heard();
+            Session open;
+            synchronized (this) {
+                open = session;
+            }
+            open.sendPong(payload, org.eclipse.jetty.websocket.api.Callback.from(() -> {}, Endpoint::logSendFailure));
+        }
+
+        @Override
+        public void onWebSocketPong(ByteBuffer payload) {
+            heard();
+        }
+
+        private void heard() {
+            lastHeard = System.nanoTime();
+        }
+
+        /** Sends a ping and schedules the next one, until the connection ends. */
+        private void ping() {
+            Session open;
+            synchronized (this) {
+                if (ended) {
+                    return;
+                }
+                open = session;
+                nextPing = scheduler.schedule(this::ping, heartbeat.pingInterval().toNanos(), TimeUnit.NANOSECONDS);
+            }
+            open.sendPing(ByteBuffer.allocate(0),
+                    org.eclipse.jetty.websocket.api.Callback.from(() -> {}, Endpoint::logSendFailure));
+        }
+
+        /**
+         * Closes a connection the client has been silent on for {@link Heartbeat#idleTimeout}; otherwise checks
+         * again when it would be. A client that has gone without a word does not answer the close either, so
+         * the connection is dropped as soon as the close frame is out.
+         */
+        private void checkIdle() {
+            long left = heartbeat.idleTimeout().toNanos() - (System.nanoTime() - lastHeard);
+            Session open;
+            synchronized (this) {
+                if (ended) {
+                    return;
+                }
+                if (left > 0) {
+                    idleCheck = scheduler.schedule(this::checkIdle, left, TimeUnit.NANOSECONDS);
+                    return;
+                }
+                ended = true;
+                nextPing.cancel();
+                open = session;
+            }
+            LOG.log(Level.INFO, "WebSocket silent for {0} s, closing it",
+                    String.valueOf(heartbeat.idleTimeout().toSeconds()));
+            open.close(StatusCode.SHUTDOWN, "idle",
+                    org.eclipse.jetty.websocket.api.Callback.from(open::disconnect, failure -> open.disconnect()));
+        }
+
+        /** Stops the pings and the idle check once the connection has ended. */
+        private synchronized void end() {
+            ended = true;
+            if (nextPing != null) {
+                nextPing.cancel();
+            }
+            if (idleCheck != null) {
+                idleCheck.cancel();
+            }
         }
 
         @Override
         public void onWebSocketError(Throwable cause) {
+            end();
             if (isClientGone(cause)) {
                 LOG.log(Level.INFO, "WebSocket client disconnected: {0}", LogText.safe(cause.toString()));
             } else {
@@ -632,6 +778,7 @@ public final class CrawdadServer {
 
         @Override
         public void onWebSocketClose(int statusCode, String reason, org.eclipse.jetty.websocket.api.Callback callback) {
+            end();
             connections.unregister(deviceId, this);
             // The reason comes from the client.
             LOG.log(Level.INFO, "WebSocket closed: {0} {1}", String.valueOf(statusCode), LogText.safe(reason));

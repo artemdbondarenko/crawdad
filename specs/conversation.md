@@ -318,4 +318,3 @@ The exact format of each message is the JSON Schema
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `MSG-12`, `MSG-13` | no pings; a connection with no messages for 30 seconds is closed with `1001` | #17 |
