@@ -21,6 +21,7 @@
   </licenses>
 
   <modules>
+    <module>adapter-api</module>
     <module>service</module>
     <module>protocol</module>
     <module>clients</module>
@@ -68,6 +69,11 @@
       <dependency>
         <groupId>io.github.artemdbondarenko.crawdad</groupId>
         <artifactId>crawdad-protocol</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.artemdbondarenko.crawdad</groupId>
+        <artifactId>crawdad-adapter-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

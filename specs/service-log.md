@@ -137,4 +137,3 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `LOG-2` | The events of `ADAPTER-8` and `ADAPTER-10` are not written: there is no choice of adapter yet. | the pull request that follows this one |

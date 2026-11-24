@@ -9,8 +9,8 @@ import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.AgentMessageE
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.AgentMessageStart;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.SessionStarted;
 import io.github.artemdbondarenko.crawdad.protocol.ProtocolMessage.UserMessage;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapter;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent;
+import io.github.artemdbondarenko.crawdad.adapter.AgentAdapter;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent;
 import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
 import io.github.artemdbondarenko.crawdad.service.device.DeviceRegistry;
@@ -264,6 +264,11 @@ class WalkingSkeletonTest {
 
     /** Passes everything to the real adapter and counts how often it was called. */
     private static final class CountingAdapter implements AgentAdapter {
+
+        @Override
+        public boolean executesRepositoryConfiguration() {
+            return false;
+        }
 
         private final AgentAdapter delegate;
         final AtomicInteger calls = new AtomicInteger();

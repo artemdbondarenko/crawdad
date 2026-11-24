@@ -1,5 +1,7 @@
 package io.github.artemdbondarenko.crawdad.service;
 
+import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapters;
+import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
 import io.github.artemdbondarenko.crawdad.service.log.LogText;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -12,17 +14,18 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Where the service listens. Without {@code --host} only on {@code 127.0.0.1}; {@code --host} names one
- * private network address, never loopback, all interfaces or a public address. {@code tls} holds the
- * owner's certificate files for that address; empty means the service issues its own certificate.
+ * Where the service listens and which agent adapter it talks to. Without {@code --host} only on
+ * {@code 127.0.0.1}; {@code --host} names one private network address, never loopback, all interfaces or a
+ * public address. {@code tls} holds the owner's certificate files for that address; empty means the service
+ * issues its own certificate. {@code agent} is the name given to {@code --agent} ({@code ADAPTER-1}).
  */
-public record ServiceConfig(String host, int port, Optional<TlsFiles> tls) {
+public record ServiceConfig(String host, int port, Optional<TlsFiles> tls, String agent) {
 
     public static final String DEFAULT_HOST = "127.0.0.1";
     public static final int DEFAULT_PORT = 8460;
 
     /** The options of the service, in the order its help names them. */
-    static final List<String> OPTIONS = List.of("--host", "--port", "--tls-cert", "--tls-key");
+    static final List<String> OPTIONS = List.of("--agent", "--host", "--port", "--tls-cert", "--tls-key");
 
     /**
      * Options the service refuses to start with, told in one line ({@code START-1}): a host it does not serve
@@ -83,15 +86,26 @@ public record ServiceConfig(String host, int port, Optional<TlsFiles> tls) {
             throw new RefusedOptionException("The port must be between 0 and 65535: " + port);
         }
         Objects.requireNonNull(tls, "tls");
+        Objects.requireNonNull(agent, "agent");
     }
 
+    /**
+     * Where to listen, with the built-in fake agent: for code that starts the server itself, as tests do. A start
+     * from arguments has no default adapter ({@link #fromArgs(String...)}).
+     */
+    public ServiceConfig(String host, int port, Optional<TlsFiles> tls) {
+        this(host, port, tls, FakeAgentAdapter.NAME);
+    }
+
+    /** Where to listen, with no TLS files and the built-in fake agent; see {@link #ServiceConfig(String, int, Optional)}. */
     public ServiceConfig(String host, int port) {
         this(host, port, Optional.empty());
     }
 
     /**
-     * Reads {@code --host <address>}, {@code --port <number>} (0 picks any free port) and
-     * {@code --tls-cert <file> --tls-key <file>}, which go together and need {@code --host}.
+     * Reads {@code --agent <name>}, which must be given ({@code ADAPTER-1}), {@code --host <address>},
+     * {@code --port <number>} (0 picks any free port) and {@code --tls-cert <file> --tls-key <file>}, which go
+     * together and need {@code --host}.
      */
     public static ServiceConfig fromArgs(String... args) {
         return fromArgs(InetAddress::getAllByName, args);
@@ -99,6 +113,11 @@ public record ServiceConfig(String host, int port, Optional<TlsFiles> tls) {
 
     static ServiceConfig fromArgs(HostResolver resolver, String... args) {
         Map<String, String> given = options(args);
+        String agent = given.get("--agent");
+        if (agent == null) {
+            throw new WrongOptionException("--agent is missing: name the agent adapter to talk to, such as --agent "
+                    + String.join(" or --agent ", AgentAdapters.builtInNames()));
+        }
         String host = given.get("--host");
         int port = given.containsKey("--port") ? parsePort(given.get("--port")) : DEFAULT_PORT;
         Path certificate = given.containsKey("--tls-cert") ? Path.of(given.get("--tls-cert")) : null;
@@ -114,9 +133,9 @@ public record ServiceConfig(String host, int port, Optional<TlsFiles> tls) {
                 throw new RefusedOptionException("--tls-cert and --tls-key are for the network address; "
                         + "set it with --host. 127.0.0.1 is always served over plain HTTP");
             }
-            return new ServiceConfig(DEFAULT_HOST, port);
+            return new ServiceConfig(DEFAULT_HOST, port, Optional.empty(), agent);
         }
-        ServiceConfig config = new ServiceConfig(host, port, tls);
+        ServiceConfig config = new ServiceConfig(host, port, tls, agent);
         requirePrivateNetworkAddress(host, resolver);
         return config;
     }

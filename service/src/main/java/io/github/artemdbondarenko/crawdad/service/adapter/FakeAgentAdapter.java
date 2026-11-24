@@ -1,5 +1,7 @@
 package io.github.artemdbondarenko.crawdad.service.adapter;
 
+import io.github.artemdbondarenko.crawdad.adapter.AgentAdapter;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,9 +10,13 @@ import java.util.regex.Pattern;
 
 /**
  * A stand-in for a real agent: no process, no key, no network. It answers {@code You said: <text>},
- * streamed word by word, so tests can check that the whole answer arrives intact and in order.
+ * streamed word by word, so tests can check that the whole answer arrives intact and in order. Built into the
+ * service under the name {@value #NAME} ({@code FAKE-4}).
  */
 public final class FakeAgentAdapter implements AgentAdapter {
+
+    /** The name the owner gives to {@code --agent} for this adapter. */
+    public static final String NAME = "fake";
 
     static final String ANSWER_PREFIX = "You said: ";
 
@@ -40,5 +46,11 @@ public final class FakeAgentAdapter implements AgentAdapter {
             listener.accept(new AgentEvent.Delta(messageId, part));
         }
         listener.accept(new AgentEvent.End(messageId));
+    }
+
+    /** The fake agent runs nothing, so nothing of a repository either ({@code FAKE-4}). */
+    @Override
+    public boolean executesRepositoryConfiguration() {
+        return false;
     }
 }

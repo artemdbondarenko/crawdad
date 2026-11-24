@@ -213,7 +213,7 @@ class CrawdadServerTest {
     void mainStartsTheServerAndPrintsWhereToOpenIt() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        server = CrawdadService.run(new String[] {"--port", "0"}, data(),
+        server = CrawdadService.run(new String[] {"--agent", "fake", "--port", "0"}, data(),
                 new PrintStream(out, true, StandardCharsets.UTF_8));
 
         assertThat(out.toString(StandardCharsets.UTF_8)).contains("Open " + server.address());
@@ -752,7 +752,7 @@ class CrawdadServerTest {
     void theServiceKeepsItsDevicesInItsDataDirectory() throws Exception {
         String key = DeviceRegistry.open(data(), Clock.systemUTC()).add("phone", Listener.LOOPBACK).key();
 
-        server = CrawdadService.run(new String[] {"--port", "0"}, data(),
+        server = CrawdadService.run(new String[] {"--agent", "fake", "--port", "0"}, data(),
                 new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8));
 
         // The device paired before the start is known: the server reads the registry of the data directory.

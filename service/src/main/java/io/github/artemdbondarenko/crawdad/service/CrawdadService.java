@@ -4,7 +4,8 @@ import io.github.artemdbondarenko.crawdad.service.CrawdadServer.CannotListenExce
 import io.github.artemdbondarenko.crawdad.service.CrawdadServer.NetworkCertificate;
 import io.github.artemdbondarenko.crawdad.service.ServiceConfig.RefusedOptionException;
 import io.github.artemdbondarenko.crawdad.service.ServiceConfig.WrongOptionException;
-import io.github.artemdbondarenko.crawdad.service.adapter.FakeAgentAdapter;
+import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapters;
+import io.github.artemdbondarenko.crawdad.service.adapter.AgentAdapters.RefusedAdapterException;
 import io.github.artemdbondarenko.crawdad.service.cli.Cli;
 import io.github.artemdbondarenko.crawdad.service.control.ControlSocket;
 import io.github.artemdbondarenko.crawdad.service.device.ConnectionRegistry;
@@ -28,14 +29,17 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.attribute.UserPrincipal;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
  * Entry point of the service:
- * {@code java -jar crawdad-service.jar [--host <address>] [--port <number>] [--tls-cert <file> --tls-key <file>]},
+ * {@code java -jar crawdad-service.jar --agent <name> [--host <address>] [--port <number>]
+ * [--tls-cert <file> --tls-key <file>]},
  * and of the owner's commands {@code pair}, {@code devices}, {@code revoke} and {@code tls export-ca}
  * when the first argument names one ({@link Cli}).
  */
@@ -98,7 +102,8 @@ public final class CrawdadService {
             err.println(e.getMessage());
             return Start.refused(REFUSED);
         } catch (AlreadyRunningException | RefusedOptionException | NoDataHomeException | UnusableRootException
-                | UnusableFileException | UnusableRegistryException | ControlSocket.CannotOpenException e) {
+                | UnusableFileException | UnusableRegistryException | ControlSocket.CannotOpenException
+                | RefusedAdapterException e) {
             err.println(e.getMessage());
             return Start.refused(REFUSED);
         } catch (Exception e) {
@@ -114,6 +119,23 @@ public final class CrawdadService {
         return Start.refused(REFUSED);
     }
 
+    /**
+     * Finds and creates the adapter named by {@code --agent}, from the built-in ones or the folder of adapters, and
+     * writes which one it is to the log ({@code ADAPTER-10}). The folder and the chosen jar must belong to the OS
+     * user who runs the service ({@code ADAPTER-4}).
+     */
+    private static AgentAdapters.Chosen chooseAgent(String name, DataDirectory data) throws IOException {
+        UserPrincipal owner = FileSystems.getDefault().getUserPrincipalLookupService()
+                .lookupPrincipalByName(System.getProperty("user.name"));
+        AgentAdapters.Chosen agent = AgentAdapters.choose(name, data.data(), owner,
+                warning -> LOG.log(Level.WARNING, warning));
+        LOG.log(Level.INFO, "Agent adapter: " + agent.name() + ", " + LogText.safe(agent.source()) + ", "
+                + (agent.adapter().executesRepositoryConfiguration()
+                        ? "executes configuration found in the repository"
+                        : "does not execute configuration found in the repository"));
+        return agent;
+    }
+
     /** Stops a server that started before the start failed; its control socket goes with it. */
     private static void stopAfterFailedStart(CrawdadServer server, Exception failure) {
         try {
@@ -127,9 +149,9 @@ public final class CrawdadService {
     static String startCommand() {
         try {
             Path jar = Path.of(CrawdadService.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            return "java -jar " + jar;
+            return "java -jar " + jar + " --agent <name>";
         } catch (URISyntaxException | RuntimeException e) {
-            return "java -jar crawdad-service.jar";
+            return "java -jar crawdad-service.jar --agent <name>";
         }
     }
 
@@ -189,11 +211,12 @@ public final class CrawdadService {
         try {
             certificate = certificateSource.get();
             DeviceRegistry devices = DeviceRegistry.open(data, Clock.systemUTC());
+            AgentAdapters.Chosen agent = chooseAgent(config.agent(), data);
             ConnectionRegistry connections = new ConnectionRegistry();
             PairingCodes codes = new PairingCodes();
             ControlSocket control = ControlSocket.open(data.runtime(), codes, devices, connections);
             try {
-                server = CrawdadServer.start(config, CLIENT_FILES, new FakeAgentAdapter(), certificate, devices,
+                server = CrawdadServer.start(config, CLIENT_FILES, agent.adapter(), certificate, devices,
                         connections, codes);
             } catch (Exception e) {
                 control.close();

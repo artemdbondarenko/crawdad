@@ -323,4 +323,3 @@ The exact format of each message is the JSON Schema
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
-| `FAKE-4` | The fake agent is used without `--agent` and does not report whether it executes repository configuration. | the pull request that follows this one |

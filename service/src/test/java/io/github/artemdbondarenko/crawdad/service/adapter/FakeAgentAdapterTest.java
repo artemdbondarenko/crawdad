@@ -3,9 +3,10 @@ package io.github.artemdbondarenko.crawdad.service.adapter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent.Delta;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent.End;
-import io.github.artemdbondarenko.crawdad.service.adapter.AgentEvent.Start;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent.Delta;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent.End;
+import io.github.artemdbondarenko.crawdad.adapter.AgentEvent.Start;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.PoolEntry;
@@ -42,6 +43,13 @@ class FakeAgentAdapterTest {
     }
 
     private final FakeAgentAdapter adapter = new FakeAgentAdapter();
+
+    @Test
+    @Tag("FAKE-4")
+    void theFakeAgentIsNamedFakeAndExecutesNoRepositoryConfiguration() {
+        assertThat(FakeAgentAdapter.NAME).isEqualTo("fake");
+        assertThat(adapter.executesRepositoryConfiguration()).isFalse();
+    }
 
     @Test
     @Tag("MSG-3")

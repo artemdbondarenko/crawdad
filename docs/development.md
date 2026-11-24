@@ -31,7 +31,7 @@ CI runs the same command on every pull request.
 
 ```sh
 ./mvnw package -DskipTests
-"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar
+"$JAVA_HOME/bin/java" -jar service/target/crawdad-service-0.1.0-SNAPSHOT.jar --agent fake
 ```
 
 `"$JAVA_HOME/bin/java"` is the Java 25 the build used: with several Java versions installed, a plain
@@ -44,6 +44,9 @@ service with Ctrl+C.
 
 Options:
 
+- `--agent <name>`: the agent adapter to talk to; there is no default. `fake` is built in: it answers
+  `You said: <text>` and runs nothing. Other adapters are jars in `adapters/` of the data directory
+  (see [Agent adapters](#agent-adapters)).
 - `--port <number>`: the port, `8460` by default; `0` picks a free port.
 - `--host <private address>`: also listen on this network address, over TLS only. It takes an IPv4
   address or a host name that resolves to a private address; loopback, `0.0.0.0` and public addresses are refused.
@@ -56,6 +59,27 @@ Every refused start is one line on the error output, with no stack trace and not
 exit code 2 for a wrong option, 1 for anything else, such as an unusable certificate, a port in use
 or a second instance ([specs/service-start.md](../specs/service-start.md)). Remote access step by
 step: [remote-access.md](remote-access.md).
+
+### Agent adapters
+
+An adapter that does not come with the service is one jar in `$XDG_DATA_HOME/crawdad/adapters/`
+(by default `~/.local/share/crawdad/adapters/`), chosen with `--agent <name>`
+([specs/agent-adapters.md](../specs/agent-adapters.md), [ADR-0007](adr/0007-agent-adapter-plugins.md)).
+The service does not create this folder.
+
+- The jar is built against the module `adapter-api`. Outside this repository, get it with
+  `./mvnw install`, which puts `io.github.artemdbondarenko.crawdad:crawdad-adapter-api` into the
+  local Maven repository.
+- Its manifest names the adapter and the version of the interface it is built for:
+  `Crawdad-Adapter-Name: <name>` and `Crawdad-Adapter-API-Version: 1`.
+- It names one implementation of `AgentAdapterProvider` in
+  `META-INF/services/io.github.artemdbondarenko.crawdad.adapter.AgentAdapterProvider`.
+- It brings its own libraries inside it: it sees only the Java platform, `adapter-api` and itself.
+- The folder and the jar must be the owner's and not writable by group or others, or the service
+  refuses to start.
+
+At start the service writes the chosen adapter to its log, with whether it executes configuration
+found in the repository.
 
 ### Pair a device
 
@@ -83,7 +107,8 @@ jar, with the service running. There is no `crawdad` wrapper yet:
 - `tls export-ca` prints the service's own root certificate, for installing on devices; see
   [remote-access.md](remote-access.md#with-the-services-own-root).
 
-When the service is not running, the commands say so, with the command to start it, and exit with 1.
+When the service is not running, the commands say so, with the command to start it (fill in the
+adapter for `--agent <name>`), and exit with 1.
 When the control socket is there but cannot be reached, for example for its permissions, they say
 that instead. Every failure is one line on the error output with no stack trace and exit code 1;
 wrong arguments exit with 2 ([specs/owner-commands.md](../specs/owner-commands.md)).
@@ -108,6 +133,7 @@ is long, the service fails at start with `Unix domain path too long`. Use a shor
 
 | Path | What it is |
 |---|---|
+| `adapter-api/` | what an agent adapter is built against ([ADR-0007](adr/0007-agent-adapter-plugins.md)) |
 | `service/` | Java service |
 | `protocol/` | JSON Schema of the messages between the service and its clients |
 | `clients/` | pnpm workspace: `shared/`, `desktop/`, and `tools/` for build tooling |
