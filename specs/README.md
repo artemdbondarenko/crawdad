@@ -75,5 +75,8 @@ the same pull request.
   certificate.
 - [Starting the service](service-start.md) — how the service refuses to start: one line that says
   why, the exit code, no stack trace, no address listened on, nothing left behind on disk.
+- [Agent adapters](agent-adapters.md) — choosing the agent adapter with `--agent`; adapters as jars
+  in a folder of the data directory; what an adapter tells the service about itself; when the
+  service refuses to start with one.
 - [The service log](service-log.md) — which events the service writes, at which level and with what
   in them; escaping values from outside; no secrets; aggregating repeated warnings.

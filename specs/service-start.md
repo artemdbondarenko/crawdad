@@ -7,8 +7,9 @@ Area of this file: `START`.
 
 Most reasons to refuse have their own rule elsewhere — an address in
 [Addresses and TLS](network.md), a second service or the files of the service in
-[Owner's commands](owner-commands.md). This file sets the rules every refusal follows, adds the
-reasons no other file covers, and collects all of them in one table ([Refusals](#refusals)).
+[Owner's commands](owner-commands.md), the agent adapter in [Agent adapters](agent-adapters.md).
+This file sets the rules every refusal follows, adds the reasons no other file covers, and collects
+all of them in one table ([Refusals](#refusals)).
 
 ## What this protects against
 
@@ -33,7 +34,8 @@ reasons no other file covers, and collects all of them in one table ([Refusals](
 
 Covers: `START-1`, `START-5`.
 
-1. Another program listens on `127.0.0.1:8460`. The owner starts the service with no options.
+1. Another program listens on `127.0.0.1:8460`. The owner starts the service with only
+   `--agent fake`.
 2. The service prints one line to its error output and exits with code `1`:
 
    ```
@@ -101,9 +103,9 @@ Covers: `START-1`, `START-6`.
 ### Reasons no other file covers
 
 - **START-3.** The service MUST refuse to start with exit code `2` when an argument is not one of its
-  options (`--host`, `--port`, `--tls-cert`, `--tls-key`), an option has no value, an option is given
-  more than once, or the value of `--port` is not a whole number from `0` to `65535`. The line MUST
-  name the option.
+  options (`--agent`, `--host`, `--port`, `--tls-cert`, `--tls-key`), an option has no value, an
+  option is given more than once, `--agent` is missing ([`ADAPTER-1`](agent-adapters.md)), or the
+  value of `--port` is not a whole number from `0` to `65535`. The line MUST name the option.
 - **START-4.** When no interface of this machine has an address of `--host`, the service MUST refuse
   to start and say that the address is not an address of this machine.
 - **START-5.** When a port it must listen on is in use, the service MUST refuse to start and say which
@@ -126,11 +128,12 @@ Covers: `START-1`, `START-6`.
 ### Refusals
 
 The order of the table is not the order of the checks, except that wrong options are found before
-anything else and a running service before the device registry and the root certificate.
+anything else and a running service before the device registry, the root certificate and the agent
+adapter.
 
 | Reason | Exit code | Rule |
 |---|---|---|
-| An unknown argument, an option without a value or given twice, a `--port` that is not `0`–`65535` | `2` | `START-3` |
+| An unknown argument, an option without a value or given twice, no `--agent`, a `--port` that is not `0`–`65535` | `2` | `START-3`, `ADAPTER-1` |
 | `--tls-cert` without `--tls-key`, or the other way round, or both without `--host` | `1` | `TLS-2` |
 | `--host` is an IPv6 address, a name that cannot be resolved or has no IPv4 address | `1` | `NET-3` |
 | `--host` is loopback, `0.0.0.0` or not in a private range | `1` | `NET-5` |
@@ -139,6 +142,11 @@ anything else and a running service before the device registry and the root cert
 | A service of the same OS user is running | `1` | `CMD-7` |
 | The own root certificate has expired, cannot be read or does not cover a name | `1` | `TLS-10` |
 | The device registry cannot be read, is not one, or has an unknown version | `1` | `START-7` |
+| The folder of adapters or the chosen jar is not the owner's or others can write to it | `1` | `ADAPTER-4` |
+| No adapter has the name of `--agent` | `1` | `ADAPTER-5` |
+| More than one adapter has the name of `--agent` | `1` | `ADAPTER-6` |
+| The chosen adapter is built for another version of the adapter interface | `1` | `ADAPTER-7` |
+| The chosen jar does not hold exactly one provider, or the provider fails | `1` | `ADAPTER-8`, `START-8` |
 | The control socket cannot be opened, its path too long among the reasons | `1` | `CMD-6`, `START-6` |
 | No interface of this machine has the address of `--host` | `1` | `START-4` |
 | A port is in use | `1` | `START-5` |
@@ -148,3 +156,4 @@ anything else and a running service before the device registry and the root cert
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `START-3` | `--agent` is not an option of the service, and a start without it is not refused. | the pull request that follows this one |
