@@ -75,7 +75,7 @@ Covers: `CMD-2`, `CMD-3`.
    with code `1`:
 
    ```
-   Crawdad is not running; start it with: java -jar /home/owner/crawdad/crawdad-service-0.1.0.jar
+   Crawdad is not running; start it with: java -jar /home/owner/crawdad/crawdad-service-0.1.0.jar --agent <name>
    ```
 
 3. The command does not start the service.
@@ -333,9 +333,10 @@ Covers: `CA-5`.
   through its control socket (`FILE-2`). A command MUST NOT start the service.
 - **CMD-3.** When nothing accepts connections on the control socket — the file is missing, or nobody
   listens on it — the command MUST say on its error output that Crawdad is not running and how to
-  start it, and MUST exit with code `1`. The way to start it MUST work as printed: while there is no
-  `crawdad` command, it is `java -jar` with the path of the jar the command was run from. The exact
-  wording is not part of the contract.
+  start it, and MUST exit with code `1`. The way to start it MUST work as printed once the owner
+  fills in the name of an adapter: while there is no `crawdad` command, it is `java -jar` with the
+  path of the jar the command was run from, followed by `--agent <name>`
+  ([`ADAPTER-1`](agent-adapters.md)). The exact wording is not part of the contract.
 - **CMD-4.** When the service closes the connection without an answer, the command MUST say so,
   point at the service log and exit with code `1`.
 - **CMD-5.** The control socket MUST accept commands only from the OS user who runs the service: the
@@ -498,3 +499,4 @@ both ends ship in the same program.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `CMD-3` | The way to start the service it prints has no `--agent <name>`. | the pull request that follows this one |

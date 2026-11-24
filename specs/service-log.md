@@ -112,6 +112,7 @@ Covers: `LOG-3`.
 
 | Event | Level | What the entry holds | Aggregated (`LOG-5`) | Rule |
 |---|---|---|---|---|
+| The agent adapter is chosen at start | INFO | adapter name, built in or its jar, whether it executes repository configuration | — | `ADAPTER-10` |
 | A device is paired | INFO | device name, address | — | `PAIR-6` |
 | A WebSocket handshake is accepted | INFO | device name, address | — | `WS-5` |
 | A device is revoked | INFO | device name, number of connections closed | — | `MSG-14`, `DEV-6` |
@@ -128,6 +129,7 @@ Covers: `LOG-3`.
 | The certificate expires in less than 14 days | WARNING | certificate file, expiry date | — | `TLS-6` |
 | `XDG_RUNTIME_DIR` does not give the control socket a place | WARNING | where the socket goes instead | — | `FILE-2` |
 | The device registry is missing at start | WARNING | registry file | — | `START-7` |
+| A file in the folder of adapters is not an adapter | WARNING | file, why | — | `ADAPTER-8` |
 | A paired device cannot be saved | ERROR | address, cause | — | `PAIR-9` |
 | A revocation cannot be saved | ERROR | device name, cause | — | `DEV-8` |
 
@@ -135,3 +137,4 @@ Covers: `LOG-3`.
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `LOG-2` | The events of `ADAPTER-8` and `ADAPTER-10` are not written: there is no choice of adapter yet. | the pull request that follows this one |

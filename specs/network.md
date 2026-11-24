@@ -31,7 +31,8 @@ a secure context. Other processes on the same machine are kept out by device key
 
 Covers: `NET-1`, `NET-2`, `NET-4`.
 
-1. The owner starts the service with no options. It prints:
+1. The owner starts the service with only `--agent fake` ([Agent adapters](agent-adapters.md)). It
+   prints:
 
    ```
    Crawdad service is running. Open http://127.0.0.1:8460/ in a browser.

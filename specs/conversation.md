@@ -1,7 +1,8 @@
 # Conversation with the service
 
 The owner opens the client in a browser, sends a text and sees the agent's answer arrive part by
-part. This version talks to a **fake agent**: no Claude Code runs yet (see [Fake agent](#fake-agent)).
+part. The agent is the one the owner chose with `--agent` ([Agent adapters](agent-adapters.md)); the
+scenarios here use the **fake agent** built into the service (see [Fake agent](#fake-agent)).
 
 Areas of this file: `HTTP` (what a port serves), `WS` (the WebSocket handshake), `MSG` (the
 messages of the conversation and the life of a connection), `UI` (what the client shows), `FAKE`
@@ -28,7 +29,7 @@ protected, is in [Addresses and TLS](network.md).
 Covers: `NET-1`, `NET-4`, `HTTP-1`, `WS-1`, `WS-2`, `WS-5`, `MSG-1`–`MSG-6`, `UI-1`–`UI-4`,
 `FAKE-1`, `FAKE-2`.
 
-1. The owner starts the service with no options. It prints the address to open:
+1. The owner starts the service with `--agent fake`. It prints the address to open:
    `http://127.0.0.1:8460/`.
 2. The owner opens that address in a browser paired there (see `S-PAIR-1` in
    [Pairing](pairing.md)). The service serves the client from the same port; the client connects to
@@ -292,13 +293,17 @@ Covers: `HTTP-3`.
 
 ### Fake agent
 
-This version has no real agent behind the service; a fake agent inside the service answers.
+The fake agent is built into the service under the name `fake`
+([Agent adapters](agent-adapters.md), `ADAPTER-2`). It stands in for a real agent in tests and while
+the service is being built.
 
 - **FAKE-1.** The fake agent MUST answer every text with exactly `You said: <text>`.
 - **FAKE-2.** The answer MUST be split into parts before each whitespace character (space, tab, line
   feed, carriage return, vertical tab, form feed), so there are always at least two parts and the
   parts joined give the answer back unchanged.
 - **FAKE-3.** The fake agent MUST NOT start a process, use a key or make network calls.
+- **FAKE-4.** The fake agent MUST be chosen with `--agent fake`, and MUST report that it does not
+  execute configuration found in the repository ([`ADAPTER-9`](agent-adapters.md)).
 
 ## Messages
 
@@ -318,3 +323,4 @@ The exact format of each message is the JSON Schema
 
 | Requirement | What the code does now | Fixed in |
 |---|---|---|
+| `FAKE-4` | The fake agent is used without `--agent` and does not report whether it executes repository configuration. | the pull request that follows this one |
