@@ -257,7 +257,8 @@ class HandshakeAuthTest {
     @Test
     @Tag("MSG-14")
     void anEndpointClosedBeforeItOpensClosesOnOpenWithoutAConversation() {
-        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id");
+        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id", Schedulers.idle(),
+                CrawdadServer.Heartbeat.DEFAULT);
         List<String> closes = new ArrayList<>();
 
         endpoint.close(4001, "unpaired");
@@ -270,7 +271,8 @@ class HandshakeAuthTest {
     @Test
     @Tag("MSG-14")
     void anOpenEndpointClosesItsSession() {
-        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id");
+        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, new ConnectionRegistry(), "id", Schedulers.idle(),
+                CrawdadServer.Heartbeat.DEFAULT);
         List<String> closes = new ArrayList<>();
         endpoint.onWebSocketOpen(session(closes));
         assertThat(adapter.calls.get()).isEqualTo(1);
@@ -284,7 +286,8 @@ class HandshakeAuthTest {
     @Tag("MSG-14")
     void aClosedEndpointLeavesTheRegistry() {
         ConnectionRegistry registry = new ConnectionRegistry();
-        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, registry, "id");
+        CrawdadServer.Endpoint endpoint = new CrawdadServer.Endpoint(adapter, registry, "id", Schedulers.idle(),
+                CrawdadServer.Heartbeat.DEFAULT);
         registry.register("id", endpoint);
         AtomicBoolean completed = new AtomicBoolean();
 
